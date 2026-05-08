@@ -1,5 +1,6 @@
 import React from 'react';
 import { LogOut } from 'lucide-react';
+import { Button } from '../ui/Button';
 
 export default function LogoutModal({ onConfirm, onClose, loading }) {
   return (
@@ -47,21 +48,20 @@ export default function LogoutModal({ onConfirm, onClose, loading }) {
         </p>
 
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button 
+          <Button 
+            variant="secondary"
             onClick={onClose}
-            className="primary-button"
-            style={{ backgroundColor: 'var(--disabled)', background: 'var(--disabled)', flex: 1 }}
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={onConfirm}
-            className="primary-button"
-            disabled={loading}
             style={{ flex: 1 }}
           >
-            {loading ? 'Logging out...' : 'Log Out'}
-          </button>
+            Cancel
+          </Button>
+          <Button 
+            onClick={onConfirm}
+            loading={loading}
+            style={{ flex: 1 }}
+          >
+            Log Out
+          </Button>
         </div>
       </div>
     </div>

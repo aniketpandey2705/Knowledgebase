@@ -48,9 +48,14 @@ export default function Login() {
           <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" />
           <div style={{ position: 'relative' }}>
             <Input label="Password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" style={{ paddingRight: '40px' }} />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '12px', top: '38px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
+            <Button 
+              variant="icon"
+              type="button" 
+              onClick={() => setShowPassword(!showPassword)} 
+              style={{ position: 'absolute', right: '12px', top: '38px' }}
+            >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
+            </Button>
           </div>
           {error && <div className="error-text" style={{ marginBottom: '16px' }}>{error}</div>}
           <Button type="submit" loading={loading} style={{ width: '100%', marginTop: '8px' }}>Sign In</Button>

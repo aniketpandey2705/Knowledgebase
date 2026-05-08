@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, FolderOpen, ChevronRight, LogOut, Settings as SettingsIcon } from 'lucide-react';
+import { Search, FolderOpen, Folder, ChevronRight, LogOut, Settings as SettingsIcon } from 'lucide-react';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useTopics } from '../hooks/useTopics';
@@ -10,54 +10,69 @@ import { useToast } from '../contexts/ToastContext';
 
 import Sidebar from '../components/Sidebar/Sidebar';
 import TopicDetail from '../components/TopicDetail/TopicDetail';
+import BrowseView from '../components/BrowseView/BrowseView';
 import AddTopicModal from '../components/Modals/AddTopicModal';
 import AddContentModal from '../components/Modals/AddContentModal';
 import DeleteConfirmModal from '../components/Modals/DeleteConfirmModal';
 import LogoutModal from '../components/Modals/LogoutModal';
 import SearchOverlay from '../components/Search/SearchOverlay';
+import { useRecentTopics } from '../hooks/useRecentTopics';
 
 export default function Home() {
   const { user, logout } = useAuth();
-  const { topics, loading: topicsLoading, fetchTopics, addTopic, editTopic, deleteTopic } = useTopics();
+  const { topics, flatTopics, loading: topicsLoading, fetchTopics, addTopic, editTopic, deleteTopic } = useTopics();
   const { content, loading: contentLoading, fetchContent, addContent, editContent, deleteContent } = useContent();
   const { activeModal, modalData, openModal, closeModal } = useModal();
   const { showToast } = useToast();
+  const { addRecent, getRecent, clearRecent } = useRecentTopics();
   const navigate = useNavigate();
 
   // Persistence: Restore last selected topic
   const [selectedTopicId, setSelectedTopicId] = useState(() => {
     return localStorage.getItem('kb_last_topic') || null;
   });
+  const [browseType, setBrowseType] = useState(null);
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [highlightContentId, setHighlightContentId] = useState(null);
 
   useEffect(() => {
     fetchTopics();
-  }, [fetchTopics]);
+    fetchContent(); // Fetch all content for sidebar counts
+  }, [fetchTopics, fetchContent]);
 
   useEffect(() => {
     if (selectedTopicId) {
       localStorage.setItem('kb_last_topic', selectedTopicId);
-      fetchContent(selectedTopicId);
+      // Removed: fetchContent(selectedTopicId) - we already have all content
       
-      const findTopic = (items) => {
-        for (const item of items) {
-          if (item.id === selectedTopicId) return item;
-          if (item.children) {
-            const found = findTopic(item.children);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-      const topic = findTopic(topics);
+      const topic = flatTopics.find(t => t.id === selectedTopicId);
       setSelectedTopic(topic);
-      if (topic) document.title = `${topic.name} — Knowledge Base`;
+      if (topic) {
+        document.title = `${topic.name} — Knowledge Base`;
+        addRecent(topic);
+      }
     } else {
       setSelectedTopic(null);
       document.title = "Knowledge Base";
     }
-  }, [selectedTopicId, topics, fetchContent]);
+  }, [selectedTopicId, flatTopics, fetchContent, addRecent]);
+
+  const handleSelectTopic = (id) => {
+    setSelectedTopicId(id);
+    setBrowseType(null);
+  };
+
+  const handleSelectBrowse = (type) => {
+    setBrowseType(type);
+    setSelectedTopicId(null);
+  };
+
+  const handleLogout = async () => {
+    clearRecent();
+    await logout();
+    navigate('/login');
+  };
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -98,12 +113,21 @@ export default function Home() {
     } catch (err) {}
   };
 
+  const contentCountMap = content.reduce((acc, item) => {
+    acc[item.topic_id] = (acc[item.topic_id] || 0) + 1;
+    return acc;
+  }, {});
+
+  const recentTopics = getRecent(flatTopics);
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--color-bg)' }}>
       <Sidebar 
         topics={topics} loading={topicsLoading}
-        selectedTopicId={selectedTopicId} onSelectTopic={setSelectedTopicId}
+        selectedTopicId={selectedTopicId} onSelectTopic={handleSelectTopic}
         onOpenModal={openModal} user={user} onLogout={() => openModal('logout')}
+        browseType={browseType} onSelectBrowse={handleSelectBrowse}
+        contentCountMap={contentCountMap}
       />
 
       <main className="mobile-full" style={{ marginLeft: '260px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -127,7 +151,7 @@ export default function Home() {
                 <><div onClick={() => setShowUserDropdown(false)} style={{ position: 'fixed', inset: 0, zIndex: 90 }} />
                 <div className="raised-card" style={{ position: 'absolute', top: '48px', right: 0, width: '200px', padding: '8px', zIndex: 100, backgroundColor: 'var(--color-base)' }}>
                   <button onClick={() => { navigate('/settings'); setShowUserDropdown(false); }} className="dropdown-item"><SettingsIcon size={16} /> Settings</button>
-                  <button onClick={() => { openModal('logout'); setShowUserDropdown(false); }} className="dropdown-item" style={{ color: 'var(--color-danger)' }}><LogOut size={16} /> Log Out</button>
+                  <button onClick={() => { setShowUserDropdown(false); handleLogout(); }} className="dropdown-item" style={{ color: 'var(--color-danger)' }}><LogOut size={16} /> Log Out</button>
                 </div></>
               )}
             </div>
@@ -135,12 +159,53 @@ export default function Home() {
         </header>
 
         <div style={{ flex: 1 }}>
-          {selectedTopicId ? (
-            <TopicDetail topic={selectedTopic} content={content} loading={contentLoading} onOpenModal={openModal} />
+          {browseType ? (
+            <BrowseView 
+              type={browseType} 
+              onClose={() => setBrowseType(null)} 
+              onNavigateToTopic={(topicId, contentId) => {
+                setSelectedTopicId(topicId);
+                setHighlightContentId(contentId);
+                setBrowseType(null);
+              }} 
+            />
+          ) : selectedTopicId ? (
+            <TopicDetail 
+              topic={selectedTopic} 
+              content={content} 
+              loading={contentLoading} 
+              onOpenModal={openModal}
+              highlightContentId={highlightContentId}
+              setHighlightContentId={setHighlightContentId}
+            />
           ) : (
-            <div style={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '24px', textAlign: 'center' }}>
-              <div className="raised-card" style={{ width: '120px', height: '120px', borderRadius: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-disabled)' }}><FolderOpen size={48} /></div>
-              <div><h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '2rem', marginBottom: '8px' }}>Select a topic</h2><p style={{ color: 'var(--color-text-secondary)' }}>Choose from sidebar or press <kbd>⌘K</kbd></p></div>
+            <div style={{ padding: '80px 40px', maxWidth: '800px', margin: '0 auto' }}>
+              <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+                <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '3rem', marginBottom: '16px' }}>Welcome back.</h1>
+                <p style={{ color: 'var(--color-text-secondary)', fontSize: '1.2rem' }}>Choose a topic or browse by type.</p>
+              </div>
+
+              {recentTopics.length > 0 && (
+                <div>
+                  <h2 style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-disabled)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '20px' }}>Recently Visited</h2>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {recentTopics.map(recent => (
+                      <div 
+                        key={recent.id} 
+                        className="raised-card btn-active-effect"
+                        onClick={() => handleSelectTopic(recent.id)}
+                        style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }}
+                      >
+                        <div style={{ color: 'var(--color-accent)' }}><Folder size={20} /></div>
+                        <div style={{ flex: 1 }}>
+                          <p style={{ fontWeight: 500 }}>{recent.name}</p>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-disabled)' }}>{formatTimeAgo(recent.timestamp)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -151,10 +216,21 @@ export default function Home() {
       {(activeModal === 'addContent' || activeModal === 'editContent') && <AddContentModal contentToEdit={activeModal === 'editContent' ? modalData : null} topicId={selectedTopicId || modalData?.topicId} defaultType={modalData?.defaultType} userId={user?.id} onSave={handleSaveContent} onClose={closeModal} />}
       {activeModal === 'deleteTopic' && <DeleteConfirmModal itemName={modalData.name} onConfirm={async () => { await deleteTopic(modalData.id); if (selectedTopicId === modalData.id) setSelectedTopicId(null); closeModal(); }} onClose={closeModal} loading={topicsLoading} />}
       {activeModal === 'deleteContent' && <DeleteConfirmModal itemName={modalData.title} onConfirm={async () => { await deleteContent(modalData.id, modalData.file_url); closeModal(); }} onClose={closeModal} loading={contentLoading} />}
-      {activeModal === 'logout' && <LogoutModal onConfirm={async () => { await logout(); navigate('/login'); }} onClose={closeModal} />}
+      {activeModal === 'logout' && <LogoutModal onConfirm={handleLogout} onClose={closeModal} />}
       {activeModal === 'search' && <SearchOverlay onClose={closeModal} onNavigate={setSelectedTopicId} topicsList={topics} />}
 
       <style>{`.dropdown-item { width: 100%; padding: 10px 12px; display: flex; alignItems: center; gap: 10px; border: none; background: none; cursor: pointer; borderRadius: 6px; fontSize: 0.9rem; color: var(--color-accent); transition: background 0.2s; } .dropdown-item:hover { background: var(--color-bg); }`}</style>
     </div>
   );
+}
+
+function formatTimeAgo(timestamp) {
+  const diff = Date.now() - timestamp;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }

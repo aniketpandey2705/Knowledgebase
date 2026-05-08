@@ -4,15 +4,31 @@ import { useSearch } from '../../hooks/useSearch';
 import { Skeleton } from '../ui/Skeleton';
 
 export default function SearchOverlay({ onClose, onNavigate, topicsList }) {
-  const { query, setQuery, filters, setFilters, results, loading } = useSearch();
+  const { query, setQuery, filters, setFilters, results, loading, fetchUniqueTags } = useSearch();
   const inputRef = useRef(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [availableTags, setAvailableTags] = useState([]);
+  const [tagInput, setTagInput] = useState('');
+  const [tagSuggestions, setTagSuggestions] = useState([]);
 
   // Persistence: Recent Searches
   const [recentSearches, setRecentSearches] = useState(() => {
     const saved = localStorage.getItem('kb_recent_searches');
     return saved ? JSON.parse(saved) : [];
   });
+
+  useEffect(() => {
+    fetchUniqueTags().then(setAvailableTags);
+  }, [fetchUniqueTags]);
+
+  useEffect(() => {
+    if (!tagInput.trim()) {
+      setTagSuggestions([]);
+      return;
+    }
+    const matches = availableTags.filter(t => t.toLowerCase().includes(tagInput.toLowerCase()));
+    setTagSuggestions(matches);
+  }, [tagInput, availableTags]);
 
   const saveRecentSearch = (q) => {
     if (!q.trim()) return;
@@ -55,7 +71,7 @@ export default function SearchOverlay({ onClose, onNavigate, topicsList }) {
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', zIndex: 2000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '80px 20px' }}>
       <div className="raised-card" style={{ width: '100%', maxWidth: '640px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'modalEnter 0.15s ease-out forwards' }}>
         <div style={{ padding: '20px', borderBottom: '1px solid var(--color-border)' }}>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
             <SearchIcon size={20} color="var(--color-text-secondary)" style={{ position: 'absolute', left: '16px' }} />
             <input 
               ref={inputRef} type="text" className="recessed-input" value={query}
@@ -64,6 +80,37 @@ export default function SearchOverlay({ onClose, onNavigate, topicsList }) {
               style={{ paddingLeft: '48px', height: '52px', fontSize: '1.1rem' }}
             />
             <button onClick={onClose} style={{ position: 'absolute', right: '16px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-disabled)' }}><X size={20} /></button>
+          </div>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+            {filters.tag && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', backgroundColor: 'var(--color-accent)', color: 'white', padding: '4px 10px', borderRadius: '100px', fontSize: '0.8rem' }}>
+                #{filters.tag} <X size={14} onClick={() => setFilters({ ...filters, tag: null })} style={{ cursor: 'pointer' }} />
+              </span>
+            )}
+            {!filters.tag && (
+              <div style={{ position: 'relative', flex: 1 }}>
+                <input 
+                  type="text" value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  placeholder="Filter by tag..."
+                  style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: '0.85rem', width: '100%' }}
+                />
+                {tagSuggestions.length > 0 && (
+                  <div className="raised-card" style={{ position: 'absolute', top: '100%', left: 0, width: '200px', zIndex: 10, padding: '4px', marginTop: '8px' }}>
+                    {tagSuggestions.map((tag, i) => (
+                      <div 
+                        key={i} onClick={() => { setFilters({ ...filters, tag }); setTagInput(''); setTagSuggestions([]); }}
+                        style={{ padding: '8px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem' }}
+                        className="dropdown-item"
+                      >
+                        #{tag}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

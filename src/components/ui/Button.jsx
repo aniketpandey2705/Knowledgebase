@@ -24,7 +24,8 @@ export function Button({
     alignItems: 'center',
     justifyContent: 'center',
     gap: '8px',
-    textDecoration: 'none'
+    textDecoration: 'none',
+    boxSizing: 'border-box'
   };
 
   const variants = {
@@ -47,6 +48,13 @@ export function Button({
       background: 'transparent',
       border: '1px solid var(--color-border)',
       color: 'var(--color-accent)',
+    },
+    icon: {
+      background: 'transparent',
+      border: 'none',
+      padding: '6px',
+      borderRadius: '6px',
+      color: '#6C6C70',
     }
   };
 

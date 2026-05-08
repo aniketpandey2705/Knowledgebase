@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '../components/ui/Button';
 
 export default function NotFound() {
   const navigate = useNavigate();
@@ -35,13 +36,12 @@ export default function NotFound() {
         This page doesn't exist.
       </p>
 
-      <button 
-        className="primary-button" 
+      <Button 
         onClick={() => navigate('/home')}
         style={{ width: 'auto', padding: '12px 32px' }}
       >
         Go Home
-      </button>
+      </Button>
     </div>
   );
 }

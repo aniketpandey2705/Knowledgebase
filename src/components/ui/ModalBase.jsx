@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
+import { Button } from './Button';
 
 export default function ModalBase({ 
   children, 
@@ -54,13 +55,14 @@ export default function ModalBase({
           animation: 'modalEnter 0.2s ease-out forwards'
         }}
       >
-        <button 
+        <Button 
+          variant="icon"
           onClick={onClose}
           aria-label="Close modal"
-          style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
+          style={{ position: 'absolute', top: '20px', right: '20px' }}
         >
           <X size={20} />
-        </button>
+        </Button>
 
         {title && <h2 id="modal-title" style={{ fontFamily: 'var(--font-heading)', fontSize: '1.5rem', marginBottom: '24px' }}>{title}</h2>}
         

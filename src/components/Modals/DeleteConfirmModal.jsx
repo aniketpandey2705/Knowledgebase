@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, AlertTriangle } from 'lucide-react';
+import { Button } from '../ui/Button';
 
 export default function DeleteConfirmModal({ 
   title, 
@@ -53,21 +54,21 @@ export default function DeleteConfirmModal({
         </p>
 
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button 
+          <Button 
+            variant="secondary"
             onClick={onClose}
-            className="primary-button"
-            style={{ backgroundColor: 'var(--disabled)', background: 'var(--disabled)', flex: 1 }}
+            style={{ flex: 1 }}
           >
             Cancel
-          </button>
-          <button 
+          </Button>
+          <Button 
+            variant="danger"
             onClick={onConfirm}
-            className="primary-button"
-            disabled={loading}
-            style={{ backgroundColor: 'var(--danger)', background: 'var(--danger)', flex: 1 }}
+            loading={loading}
+            style={{ flex: 1 }}
           >
-            {loading ? 'Deleting...' : 'Delete'}
-          </button>
+            Delete
+          </Button>
         </div>
       </div>
     </div>

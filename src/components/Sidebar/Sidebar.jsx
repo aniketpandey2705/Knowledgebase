@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ChevronRight, ChevronDown, MoreVertical, LogOut, User, Menu } from 'lucide-react';
+import { Folder, ChevronRight, Plus, File, Image as ImageIcon, HelpCircle, FileText, LogOut, User, Menu, MoreVertical } from 'lucide-react';
+import { formattedDate } from '../../utils/timeUtils';
 import { SidebarSkeleton } from '../ui/Skeleton';
 import { Button } from '../ui/Button';
 
@@ -10,7 +11,10 @@ export default function Sidebar({
   onSelectTopic, 
   onOpenModal, 
   user, 
-  onLogout 
+  onLogout,
+  browseType,
+  onSelectBrowse,
+  contentCountMap = {}
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -31,17 +35,17 @@ export default function Sidebar({
   return (
     <>
       {/* Mobile Hamburger */}
-      <button 
-        className="btn-active-effect"
+      <Button 
+        variant="icon"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         style={{
           position: 'fixed', top: '12px', left: '12px', zIndex: 1001,
           display: 'none', // Overridden by media query in index.css
-          padding: '8px', background: 'var(--color-base)', borderRadius: '8px', border: '1px solid var(--color-border)'
+          background: 'var(--color-base)', border: '1px solid var(--color-border)'
         }}
       >
         <Menu size={24} />
-      </button>
+      </Button>
 
       <aside 
         className={`${isMobileMenuOpen ? 'mobile-show' : 'mobile-hide'}`}
@@ -66,6 +70,16 @@ export default function Sidebar({
           </Button>
         </div>
 
+        <div style={{ padding: '0 20px', marginBottom: '24px' }}>
+          <p className="form-label" style={{ fontSize: '10px', marginBottom: '12px' }}>Browse</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <BrowseRow icon={<File size={16} />} label="All PDFs" active={browseType === 'pdf'} onClick={() => onSelectBrowse('pdf')} />
+            <BrowseRow icon={<ImageIcon size={16} />} label="All Images" active={browseType === 'image'} onClick={() => onSelectBrowse('image')} />
+            <BrowseRow icon={<HelpCircle size={16} />} label="All Questions" active={browseType === 'question'} onClick={() => onSelectBrowse('question')} />
+            <BrowseRow icon={<FileText size={16} />} label="All Notes" active={browseType === 'note'} onClick={() => onSelectBrowse('note')} />
+          </div>
+        </div>
+
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px' }}>
           {loading ? (
             <SidebarSkeleton />
@@ -84,6 +98,7 @@ export default function Sidebar({
                 onToggleExpand={toggleExpand}
                 onSelectTopic={(id) => { onSelectTopic(id); setIsMobileMenuOpen(false); }}
                 onOpenModal={onOpenModal}
+                contentCountMap={contentCountMap}
               />
             ))
           )}
@@ -98,11 +113,37 @@ export default function Sidebar({
               {user?.user_metadata?.name || user?.email?.split('@')[0]}
             </p>
           </div>
-          <button onClick={onLogout} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
+          <Button variant="icon" onClick={onLogout}>
             <LogOut size={18} />
-          </button>
+          </Button>
         </div>
       </aside>
+
+      <style>{`
+        .sidebar-topic-row { position: relative; }
+        .sidebar-topic-row:hover::after {
+          content: attr(data-tooltip);
+          position: absolute;
+          left: 100%;
+          top: 50%;
+          transform: translateY(-50%);
+          margin-left: 12px;
+          background: #333;
+          color: white;
+          padding: 6px 10px;
+          border-radius: 4px;
+          font-size: 11px;
+          white-space: nowrap;
+          z-index: 100;
+          opacity: 0;
+          visibility: hidden;
+          transition: opacity 0.2s 0.5s, visibility 0.2s 0.5s;
+        }
+        .sidebar-topic-row:hover:after {
+          opacity: 1;
+          visibility: visible;
+        }
+      `}</style>
 
       {/* Mobile Overlay */}
       {isMobileMenuOpen && (
@@ -115,59 +156,83 @@ export default function Sidebar({
   );
 }
 
-function TopicNode({ topic, level, selectedTopicId, expandedIds, onToggleExpand, onSelectTopic, onOpenModal }) {
+function BrowseRow({ icon, label, active, onClick }) {
+  return (
+    <div 
+      onClick={onClick}
+      className="btn-active-effect"
+      style={{
+        height: '36px', display: 'flex', alignItems: 'center', gap: '12px',
+        padding: '0 12px', cursor: 'pointer', borderRadius: '8px',
+        backgroundColor: active ? 'var(--color-accent)' : 'transparent',
+        color: active ? 'white' : 'var(--color-accent)', fontSize: '0.9rem'
+      }}
+    >
+      {icon} <span>{label}</span>
+    </div>
+  );
+}
+
+function TopicNode({ topic, level, selectedTopicId, expandedIds, onToggleExpand, onSelectTopic, onOpenModal, contentCountMap }) {
   const isExpanded = expandedIds.includes(topic.id);
   const isActive = selectedTopicId === topic.id;
-  const hasChildren = topic.children && topic.children.length > 0;
+  const count = contentCountMap[topic.id] || 0;
+  const lastUpdatedStr = formattedDate(topic.updated_at);
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ marginBottom: '2px' }}>
       <div 
-        onClick={() => onSelectTopic(topic.id)}
-        className="btn-active-effect"
+        className="sidebar-topic-row btn-active-effect"
+        data-tooltip={topic.updated_at ? `Last updated: ${lastUpdatedStr}` : ''}
         style={{
-          height: '36px', display: 'flex', alignItems: 'center',
-          padding: `0 8px 0 ${level * 16 + 8}px`, cursor: 'pointer', borderRadius: '8px',
+          height: '36px', display: 'flex', alignItems: 'center', gap: '8px',
+          padding: `0 12px 0 ${level * 16 + 12}px`, cursor: 'pointer', borderRadius: '8px',
           backgroundColor: isActive ? 'var(--color-accent)' : 'transparent',
-          color: isActive ? 'white' : 'var(--color-accent)', fontSize: '0.9rem', marginBottom: '2px'
+          color: isActive ? 'white' : 'var(--color-text-secondary)',
+          fontSize: '0.9rem', transition: 'all 150ms ease'
         }}
+        onClick={() => onSelectTopic(topic.id)}
       >
-        <div 
-          onClick={(e) => { e.stopPropagation(); onToggleExpand(topic.id); }}
-          style={{ width: '20px', visibility: hasChildren ? 'visible' : 'hidden' }}
-        >
-          {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        <div onClick={(e) => { e.stopPropagation(); onToggleExpand(topic.id); }} style={{ display: 'flex', alignItems: 'center' }}>
+          {topic.children?.length > 0 ? (
+            <ChevronRight size={14} style={{ transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
+          ) : <div style={{ width: 14 }} />}
         </div>
+        <Folder size={16} />
+        <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{topic.name}</span>
+        
+        {count > 0 && (
+          <span style={{ 
+            backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : '#F2F2F7', 
+            color: isActive ? 'white' : '#6C6C70', 
+            fontSize: '10px', fontWeight: 600, padding: '2px 6px', borderRadius: '100px' 
+          }}>
+            {count}
+          </span>
+        )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-          <span>{topic.icon || '📁'}</span>
-          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{topic.name}</span>
-        </div>
-
-        <button 
+        <Button 
+          variant="icon"
           onClick={(e) => { e.stopPropagation(); onOpenModal('editTopic', topic); }}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: isActive ? 'white' : 'var(--color-text-secondary)' }}
+          style={{ color: isActive ? 'white' : 'var(--color-text-secondary)' }}
         >
           <MoreVertical size={14} />
-        </button>
+        </Button>
       </div>
 
-      {hasChildren && isExpanded && (
-        <div>
-          {topic.children.map(child => (
-            <TopicNode 
-              key={child.id} 
-              topic={child} 
-              level={level + 1}
-              selectedTopicId={selectedTopicId}
-              expandedIds={expandedIds}
-              onToggleExpand={onToggleExpand}
-              onSelectTopic={onSelectTopic}
-              onOpenModal={onOpenModal}
-            />
-          ))}
-        </div>
-      )}
+      {isExpanded && topic.children?.map(child => (
+        <TopicNode 
+          key={child.id} 
+          topic={child} 
+          level={level + 1}
+          selectedTopicId={selectedTopicId}
+          expandedIds={expandedIds}
+          onToggleExpand={onToggleExpand}
+          onSelectTopic={onSelectTopic}
+          onOpenModal={onOpenModal}
+          contentCountMap={contentCountMap}
+        />
+      ))}
     </div>
   );
 }

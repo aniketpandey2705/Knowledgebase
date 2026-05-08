@@ -9,18 +9,22 @@ export function useContent() {
   const { user } = useAuth();
   const { showToast } = useToast();
 
-  const fetchContent = useCallback(async (topicId) => {
-    if (!topicId) return;
+  const fetchContent = useCallback(async (topicId = null) => {
     setLoading(true);
     try {
-      const data = await api.getContentByTopic(topicId);
+      let data;
+      if (topicId) {
+        data = await api.getContentByTopic(topicId);
+      } else {
+        data = await api.getAllContent(user.id);
+      }
       setContent(data);
     } catch (err) {
       showToast('Failed to load content.', 'error');
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [user, showToast]);
 
   const addContent = async (contentData) => {
     const tempId = Date.now().toString();
@@ -45,7 +49,7 @@ export function useContent() {
     setContent(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
 
     try {
-      const updated = await api.updateContent(id, updates);
+      const updated = await api.updateContent(id, updates, previous.find(c => c.id === id)?.topic_id);
       setContent(prev => prev.map(item => item.id === id ? updated : item));
     } catch (err) {
       setContent(previous);
@@ -59,7 +63,7 @@ export function useContent() {
     setContent(prev => prev.filter(item => item.id !== id));
 
     try {
-      await api.deleteContent(id, storagePath);
+      await api.deleteContent(id, storagePath, previous.find(c => c.id === id)?.topic_id);
     } catch (err) {
       setContent(previous);
       showToast('Failed to delete.', 'error');

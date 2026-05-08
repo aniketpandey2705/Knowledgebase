@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -7,7 +7,8 @@ export function useSearch() {
   const [filters, setFilters] = useState({
     type: null,
     topic_id: null,
-    dateRange: null
+    dateRange: null,
+    tag: null
   });
   const [results, setResults] = useState({ topics: [], content: [] });
   const [loading, setLoading] = useState(false);
@@ -55,6 +56,7 @@ export function useSearch() {
 
       if (filters.type) contentQuery = contentQuery.eq('type', filters.type);
       if (filters.topic_id) contentQuery = contentQuery.eq('topic_id', filters.topic_id);
+      if (filters.tag) contentQuery = contentQuery.contains('tags', [filters.tag]);
 
       const { data: contentResults, error: cErr } = await contentQuery;
       if (cErr) throw cErr;
@@ -81,6 +83,23 @@ export function useSearch() {
     setResults({ topics: [], content: [] });
   };
 
+  const fetchUniqueTags = useCallback(async () => {
+    if (!user) return [];
+    try {
+      const { data, error } = await supabase
+        .from('content')
+        .select('tags')
+        .eq('user_id', user.id);
+      if (error) throw error;
+      
+      const allTags = data.flatMap(item => item.tags || []);
+      return Array.from(new Set(allTags)).sort();
+    } catch (err) {
+      console.error("Error fetching tags", err);
+      return [];
+    }
+  }, [user]);
+
   return { 
     query, 
     setQuery, 
@@ -89,6 +108,7 @@ export function useSearch() {
     results, 
     loading, 
     error, 
-    clearSearch 
+    clearSearch,
+    fetchUniqueTags
   };
 }

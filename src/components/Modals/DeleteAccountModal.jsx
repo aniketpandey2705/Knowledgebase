@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AlertCircle, X } from 'lucide-react';
+import { Button } from '../ui/Button';
 
 export default function DeleteAccountModal({ onConfirm, onClose, loading }) {
   const [confirmText, setConfirmText] = useState('');
@@ -24,20 +25,17 @@ export default function DeleteAccountModal({ onConfirm, onClose, loading }) {
         padding: '32px',
         position: 'relative'
       }}>
-        <button 
+        <Button 
+          variant="icon"
           onClick={onClose}
           style={{
             position: 'absolute',
             top: '20px',
             right: '20px',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            color: 'var(--text-secondary)'
           }}
         >
           <X size={20} />
-        </button>
+        </Button>
 
         <div style={{ 
           width: '48px', 
@@ -80,25 +78,22 @@ export default function DeleteAccountModal({ onConfirm, onClose, loading }) {
         </div>
 
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button 
+          <Button 
+            variant="secondary"
             onClick={onClose}
-            className="primary-button"
-            style={{ backgroundColor: 'var(--disabled)', background: 'var(--disabled)', flex: 1 }}
+            style={{ flex: 1 }}
           >
             Cancel
-          </button>
-          <button 
+          </Button>
+          <Button 
+            variant="danger"
             onClick={onConfirm}
-            className="primary-button"
-            disabled={!isEnabled || loading}
-            style={{ 
-              backgroundColor: isEnabled ? 'var(--danger)' : 'var(--disabled)', 
-              background: isEnabled ? 'var(--danger)' : 'var(--disabled)',
-              flex: 1 
-            }}
+            disabled={!isEnabled}
+            loading={loading}
+            style={{ flex: 1 }}
           >
-            {loading ? 'Deleting...' : 'Delete My Account'}
-          </button>
+            Delete My Account
+          </Button>
         </div>
       </div>
     </div>

@@ -34,7 +34,7 @@ export function useTopics() {
       cache.current = data;
       setTopics(buildTree(data));
     } catch (err) {
-      showToast('Failed to load topics. Check your internet.', 'error');
+      showToast('Failed to load topics. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -100,5 +100,5 @@ export function useTopics() {
     }
   };
 
-  return { topics, loading, fetchTopics, addTopic, editTopic, deleteTopic };
+  return { topics, flatTopics: cache.current || [], loading, fetchTopics, addTopic, editTopic, deleteTopic };
 }

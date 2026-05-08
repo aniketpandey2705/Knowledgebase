@@ -6,7 +6,7 @@ export function useUpload() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const uploadFile = async (file, userId) => {
+  const uploadFile = async (file, userId, type) => {
     setLoading(true);
     setError(null);
     setProgress(0);
@@ -20,10 +20,14 @@ export function useUpload() {
     }, 200);
 
     try {
-      const timestamp = Date.now();
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const timestamp = now.getTime();
+      
       // Clean filename to prevent weird URL issues
       const cleanFileName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-      const path = `${userId}/${timestamp}_${cleanFileName}`;
+      const path = `${userId}/${type || 'misc'}/${year}/${month}/${timestamp}_${cleanFileName}`;
 
       const { data, error: uploadError } = await supabase.storage
         .from('knowledge-files')

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from './ui/Button';
 
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -33,13 +34,12 @@ export default class ErrorBoundary extends React.Component {
           <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>
             An unexpected error occurred. Please reload the page to continue.
           </p>
-          <button 
-            className="primary-button" 
+          <Button 
             onClick={() => window.location.reload()}
             style={{ width: 'auto', padding: '12px 32px' }}
           >
             Reload Page
-          </button>
+          </Button>
         </div>
       );
     }

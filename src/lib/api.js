@@ -10,9 +10,9 @@ export const api = {
   async getTopics(userId) {
     const { data, error } = await supabase
       .from('topics')
-      .select('*')
+      .select('*, updated_at')
       .eq('user_id', userId)
-      .order('created_at');
+      .order('created_at', { ascending: true });
     if (error) throw error;
     return data;
   },
@@ -52,7 +52,16 @@ export const api = {
       .from('content')
       .select('*, topics(name, parent_id)')
       .eq('topic_id', topicId)
-      .order('created_at');
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  async getAllContent(userId) {
+    const { data, error } = await supabase
+      .from('content')
+      .select('*')
+      .eq('user_id', userId);
     if (error) throw error;
     return data;
   },
@@ -64,10 +73,14 @@ export const api = {
       .select()
       .single();
     if (error) throw error;
+    
+    // Touch topic updated_at
+    await supabase.from('topics').update({ updated_at: new Date() }).eq('id', contentData.topic_id);
+    
     return data;
   },
 
-  async updateContent(id, updates) {
+  async updateContent(id, updates, topicId) {
     const { data, error } = await supabase
       .from('content')
       .update(updates)
@@ -75,16 +88,27 @@ export const api = {
       .select()
       .single();
     if (error) throw error;
+
+    // Touch topic updated_at
+    if (topicId) {
+      await supabase.from('topics').update({ updated_at: new Date() }).eq('id', topicId);
+    }
+
     return data;
   },
 
-  async deleteContent(id, storagePath = null) {
+  async deleteContent(id, storagePath = null, topicId = null) {
     // Delete from DB
     const { error: dbError } = await supabase
       .from('content')
       .delete()
       .eq('id', id);
     if (dbError) throw dbError;
+
+    // Touch topic updated_at
+    if (topicId) {
+      await supabase.from('topics').update({ updated_at: new Date() }).eq('id', topicId);
+    }
 
     // Delete from Storage if path provided
     if (storagePath) {

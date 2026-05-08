@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, File, Image as ImageIcon } from 'lucide-react';
+import { Upload, File, Image as ImageIcon, X } from 'lucide-react';
+import { wordCount, charCount } from '../../utils/textUtils';
 import { useUpload } from '../../hooks/useUpload';
 import ModalBase from '../ui/ModalBase';
 import { Button } from '../ui/Button';
@@ -11,6 +12,8 @@ export default function AddContentModal({ contentToEdit, topicId, defaultType, u
   const [type, setType] = useState(defaultType || 'question');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [tags, setTags] = useState([]);
+  const [tagInput, setTagInput] = useState('');
   const [file, setFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -26,9 +29,23 @@ export default function AddContentModal({ contentToEdit, topicId, defaultType, u
       setType(contentToEdit.type);
       setTitle(contentToEdit.title);
       setBody(contentToEdit.body || '');
+      setTags(contentToEdit.tags || []);
       if (contentToEdit.file_url) setFilePreview(contentToEdit.file_url);
     }
   }, [contentToEdit]);
+
+  const handleAddTag = (e) => {
+    if (e.key === 'Enter' && tagInput.trim()) {
+      e.preventDefault();
+      const val = tagInput.trim().toLowerCase();
+      if (val.length > 20) return;
+      if (tags.length >= 5) return;
+      if (!tags.includes(val)) {
+        setTags([...tags, val]);
+      }
+      setTagInput('');
+    }
+  };
 
   const handleFileChange = (selectedFile) => {
     if (selectedFile) {
@@ -57,14 +74,15 @@ export default function AddContentModal({ contentToEdit, topicId, defaultType, u
 
     try {
       if (file && (type === 'pdf' || type === 'image')) {
-        const uploadResult = await uploadFile(file, userId);
+        const uploadResult = await uploadFile(file, userId, type);
         file_url = uploadResult.publicUrl;
         file_name = uploadResult.fileName;
       }
       onSave({
         topic_id: topicId, type, title: title.trim(),
         body: (type === 'question' || type === 'note') ? body.trim() : null,
-        file_url, file_name
+        file_url, file_name,
+        tags
       });
     } catch (err) {
       console.error("Upload failed", err);
@@ -98,11 +116,20 @@ export default function AddContentModal({ contentToEdit, topicId, defaultType, u
         />
 
         {(type === 'question' || type === 'note') ? (
-          <Textarea 
-            label="Body Text" value={body} rows={6} maxLength={10000}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="Write your content here..."
-          />
+          <div className="form-group">
+            <Textarea 
+              label="Body Text" value={body} rows={6} maxLength={10000}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Write your content here..."
+            />
+            <div style={{ 
+              marginTop: '4px', fontSize: '12px', display: 'flex', justifyContent: 'space-between',
+              color: charCount(body) >= 10000 ? '#FF3B30' : charCount(body) >= 8000 ? '#FF9500' : '#6C6C70'
+            }}>
+              <span>{wordCount(body)} words  &bull;  {charCount(body)} characters</span>
+              {charCount(body) >= 8000 && <span>{10000 - charCount(body)} characters remaining</span>}
+            </div>
+          </div>
         ) : (
           <div className="form-group">
             <label className="form-label">File Upload</label>
@@ -125,6 +152,25 @@ export default function AddContentModal({ contentToEdit, topicId, defaultType, u
             {uploadError && <p className="error-text">{uploadError}</p>}
           </div>
         )}
+
+        <div className="form-group">
+          <label className="form-label">Tags (Enter to add)</label>
+          <div className="recessed-input" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', minHeight: '44px' }}>
+            {tags.map((tag, i) => (
+              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', backgroundColor: '#F2F2F7', color: '#6C6C70', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
+                #{tag} <X size={12} onClick={() => setTags(tags.filter((_, idx) => idx !== i))} style={{ cursor: 'pointer' }} />
+              </span>
+            ))}
+            <input 
+              type="text" value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={handleAddTag}
+              placeholder={tags.length === 0 ? "add tags..." : ""}
+              style={{ border: 'none', outline: 'none', background: 'transparent', flex: 1, minWidth: '60px' }}
+            />
+          </div>
+          <p style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', marginTop: '4px' }}>Max 5 tags, 20 chars each.</p>
+        </div>
 
         {uploading && (
           <div style={{ marginBottom: '24px' }}>
