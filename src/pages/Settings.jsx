@@ -62,9 +62,28 @@ export default function Settings() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    setDeleteLoading(true);
+    try {
+      await supabase.rpc('delete_user');
+      await logout();
+      navigate('/login');
+    } catch (err) {
+      showToast(err.message, 'error');
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--color-bg)' }}>
-      <Sidebar topics={topics} onOpenModal={() => navigate('/home')} user={user} onLogout={() => openModal('logout')} />
+      <Sidebar 
+        topics={topics} 
+        onOpenModal={openModal} 
+        user={user} 
+        onLogout={() => openModal('logout')}
+        onSelectTopic={(id) => navigate('/home')} // Redirect to home with selected topic
+        onSelectBrowse={() => navigate('/home')}
+      />
       <main className="mobile-full" style={{ marginLeft: '260px', flex: 1, padding: '40px' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
           <header style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '40px' }}>
@@ -105,7 +124,13 @@ export default function Settings() {
           </div>
         </div>
       </main>
-      {activeModal === 'deleteAccount' && <DeleteAccountModal onConfirm={async () => { setDeleteLoading(true); await supabase.rpc('delete_user'); await logout(); navigate('/login'); }} onClose={closeModal} loading={deleteLoading} />}
+      {activeModal === 'deleteAccount' && (
+        <DeleteAccountModal 
+          onConfirm={handleDeleteAccount} 
+          onClose={closeModal} 
+          loading={deleteLoading} 
+        />
+      )}
     </div>
   );
 }

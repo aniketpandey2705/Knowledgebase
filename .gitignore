@@ -42,3 +42,6 @@ coverage/
 # Misc
 *.local
 .vercel
+
+# Other
+implementation_plan.md
