@@ -22,7 +22,7 @@ export default function NotFound() {
         fontSize: '6rem', 
         lineHeight: 1, 
         marginBottom: '16px',
-        color: 'var(--accent)'
+        color: 'var(--color-accent)'
       }}>
         404
       </h1>

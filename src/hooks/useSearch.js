@@ -1,90 +1,80 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from './useAuth';
+import { useAuth } from '../contexts/AuthContext';
 
 export function useSearch() {
   const [query, setQuery] = useState('');
-  const [filters, setFilters] = useState({ type: null, topic_id: null, dateRange: null });
+  const [filters, setFilters] = useState({
+    type: null,
+    topic_id: null,
+    dateRange: null
+  });
   const [results, setResults] = useState({ topics: [], content: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
-  const performSearch = useCallback(async (searchQuery) => {
-    if (!user || !searchQuery.trim()) {
+  useEffect(() => {
+    if (!query.trim()) {
       setResults({ topics: [], content: [] });
       return;
     }
+    const timer = setTimeout(() => {
+      runSearch();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query, filters]);
 
+  async function runSearch() {
+    if (!user) return;
     setLoading(true);
     setError(null);
-
     try {
-      const uid = user.id;
-      const cleanQuery = searchQuery.trim();
-
-      // 1. Topic name search
-      const topicNamePromise = supabase
+      // 1. Search topic names
+      const { data: topicNameResults, error: tnErr } = await supabase
         .from('topics')
         .select('*')
-        .eq('user_id', uid)
-        .textSearch('name', cleanQuery, { type: 'websearch' });
+        .eq('user_id', user.id)
+        .ilike('name', `%${query}%`);
+      if (tnErr) throw tnErr;
 
-      // 2. Alias search
-      const aliasPromise = supabase
+      // 2. Search topic aliases
+      const { data: topicAliasResults, error: taErr } = await supabase
         .from('topics')
         .select('*')
-        .eq('user_id', uid)
-        .contains('aliases', [cleanQuery.toLowerCase()]);
+        .eq('user_id', user.id)
+        .contains('aliases', [query.toLowerCase()]);
+      if (taErr) throw taErr;
 
-      // 3. Content search
+      // 3. Search content title + body
       let contentQuery = supabase
         .from('content')
-        .select('*, topics(name, parent_id)')
-        .eq('user_id', uid)
-        .textSearch('title', cleanQuery, { type: 'websearch' });
+        .select('*, topics(name)')
+        .eq('user_id', user.id)
+        .or(`title.ilike.%${query}%,body.ilike.%${query}%`);
 
-      // Apply content filters
-      if (filters.type) {
-        contentQuery = contentQuery.eq('type', filters.type);
-      }
-      if (filters.topic_id) {
-        contentQuery = contentQuery.eq('topic_id', filters.topic_id);
-      }
+      if (filters.type) contentQuery = contentQuery.eq('type', filters.type);
+      if (filters.topic_id) contentQuery = contentQuery.eq('topic_id', filters.topic_id);
 
-      const [tnResults, aliasResults, contentResults] = await Promise.all([
-        topicNamePromise,
-        aliasPromise,
-        contentQuery
-      ]);
+      const { data: contentResults, error: cErr } = await contentQuery;
+      if (cErr) throw cErr;
 
-      if (tnResults.error) throw tnResults.error;
-      if (aliasResults.error) throw aliasResults.error;
-      if (contentResults.error) throw contentResults.error;
-
-      // Merge and deduplicate topics
-      const allTopics = [...(tnResults.data || []), ...(aliasResults.data || [])];
-      const uniqueTopics = Array.from(new Map(allTopics.map(item => [item.id, item])).values());
+      // Merge + deduplicate topics
+      const allTopics = [...(topicNameResults || []), ...(topicAliasResults || [])];
+      const uniqueTopics = allTopics.filter(
+        (t, i, self) => self.findIndex(x => x.id === t.id) === i
+      );
 
       setResults({
         topics: uniqueTopics,
-        content: contentResults.data || []
+        content: contentResults || []
       });
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [user, filters]);
-
-  // Debounce logic
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      performSearch(query);
-    }, 300);
-
-    return () => clearTimeout(handler);
-  }, [query, performSearch]);
+  }
 
   const clearSearch = () => {
     setQuery('');

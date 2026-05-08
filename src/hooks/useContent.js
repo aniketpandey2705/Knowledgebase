@@ -1,86 +1,71 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
-import { useAuth } from './useAuth';
+import { api } from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 
 export function useContent() {
   const [content, setContent] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const { user } = useAuth();
+  const { showToast } = useToast();
 
-  const fetchContent = useCallback(async (topic_id) => {
-    if (!topic_id) return;
+  const fetchContent = useCallback(async (topicId) => {
+    if (!topicId) return;
     setLoading(true);
-    setError(null);
     try {
-      const { data, error: fetchError } = await supabase
-        .from('content')
-        .select('*')
-        .eq('topic_id', topic_id)
-        .order('created_at');
-
-      if (fetchError) throw fetchError;
-      setContent(data || []);
+      const data = await api.getContentByTopic(topicId);
+      setContent(data);
     } catch (err) {
-      setError(err.message);
+      showToast('Failed to load content.', 'error');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
   const addContent = async (contentData) => {
-    if (!user) return;
-    setError(null);
-    try {
-      const { error: insertError } = await supabase
-        .from('content')
-        .insert({ ...contentData, user_id: user.id });
+    const tempId = Date.now().toString();
+    const optimisticItem = { ...contentData, id: tempId, created_at: new Date().toISOString() };
+    
+    const previous = [...content];
+    setContent([optimisticItem, ...previous]);
 
-      if (insertError) throw insertError;
-      if (contentData.topic_id) {
-        await fetchContent(contentData.topic_id);
-      }
+    try {
+      const saved = await api.createContent({ ...contentData, user_id: user.id });
+      setContent(prev => prev.map(item => item.id === tempId ? saved : item));
+      return saved;
     } catch (err) {
-      setError(err.message);
+      setContent(previous);
+      showToast('Failed to add content.', 'error');
       throw err;
     }
   };
 
-  const editContent = async (id, fields, topic_id) => {
-    setError(null);
-    try {
-      const { error: updateError } = await supabase
-        .from('content')
-        .update(fields)
-        .eq('id', id);
+  const editContent = async (id, updates) => {
+    const previous = [...content];
+    setContent(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
 
-      if (updateError) throw updateError;
-      if (topic_id) {
-        await fetchContent(topic_id);
-      }
+    try {
+      const updated = await api.updateContent(id, updates);
+      setContent(prev => prev.map(item => item.id === id ? updated : item));
     } catch (err) {
-      setError(err.message);
+      setContent(previous);
+      showToast('Failed to update.', 'error');
       throw err;
     }
   };
 
-  const deleteContent = async (id, topic_id) => {
-    setError(null);
-    try {
-      const { error: deleteError } = await supabase
-        .from('content')
-        .delete()
-        .eq('id', id);
+  const deleteContent = async (id, storagePath = null) => {
+    const previous = [...content];
+    setContent(prev => prev.filter(item => item.id !== id));
 
-      if (deleteError) throw deleteError;
-      if (topic_id) {
-        await fetchContent(topic_id);
-      }
+    try {
+      await api.deleteContent(id, storagePath);
     } catch (err) {
-      setError(err.message);
+      setContent(previous);
+      showToast('Failed to delete.', 'error');
       throw err;
     }
   };
 
-  return { content, loading, error, fetchContent, addContent, editContent, deleteContent };
+  return { content, loading, fetchContent, addContent, editContent, deleteContent };
 }

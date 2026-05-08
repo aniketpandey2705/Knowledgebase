@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
-import { useAuth } from './useAuth';
+import { useState, useCallback, useRef } from 'react';
+import { api } from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 
 const buildTree = (items, parentId = null) => {
   return items
@@ -14,76 +15,90 @@ const buildTree = (items, parentId = null) => {
 export function useTopics() {
   const [topics, setTopics] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const { user } = useAuth();
+  const { showToast } = useToast();
+  
+  // Cache ref to avoid redundant fetches
+  const cache = useRef(null);
 
-  const fetchTopics = useCallback(async () => {
+  const fetchTopics = useCallback(async (force = false) => {
     if (!user) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const { data, error: fetchError } = await supabase
-        .from('topics')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at');
+    if (!force && cache.current) {
+      setTopics(buildTree(cache.current));
+      return;
+    }
 
-      if (fetchError) throw fetchError;
+    setLoading(true);
+    try {
+      const data = await api.getTopics(user.id);
+      cache.current = data;
       setTopics(buildTree(data));
     } catch (err) {
-      setError(err.message);
+      showToast('Failed to load topics. Check your internet.', 'error');
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, showToast]);
 
-  const addTopic = async ({ name, aliases, parent_id }) => {
-    if (!user) return;
-    setError(null);
+  const addTopic = async (topicData) => {
+    const tempId = Date.now().toString();
+    const optimisticTopic = { ...topicData, id: tempId, user_id: user.id, created_at: new Date().toISOString() };
+    
+    // Optimistic Update
+    const previousCache = [...(cache.current || [])];
+    const newCache = [...previousCache, optimisticTopic];
+    cache.current = newCache;
+    setTopics(buildTree(newCache));
+
     try {
-      const { error: insertError } = await supabase
-        .from('topics')
-        .insert({ name, aliases, parent_id, user_id: user.id });
-
-      if (insertError) throw insertError;
-      await fetchTopics();
+      const savedTopic = await api.createTopic({ ...topicData, user_id: user.id });
+      // Replace temp with real
+      cache.current = previousCache.map(t => t.id === tempId ? savedTopic : t);
+      cache.current = [...previousCache, savedTopic];
+      setTopics(buildTree(cache.current));
+      return savedTopic;
     } catch (err) {
-      setError(err.message);
+      // Rollback
+      cache.current = previousCache;
+      setTopics(buildTree(previousCache));
+      showToast('Failed to add topic. Try again.', 'error');
       throw err;
     }
   };
 
-  const editTopic = async (id, { name, aliases, parent_id }) => {
-    setError(null);
-    try {
-      const { error: updateError } = await supabase
-        .from('topics')
-        .update({ name, aliases, parent_id })
-        .eq('id', id);
+  const editTopic = async (id, updates) => {
+    const previousCache = [...(cache.current || [])];
+    const newCache = previousCache.map(t => t.id === id ? { ...t, ...updates } : t);
+    cache.current = newCache;
+    setTopics(buildTree(newCache));
 
-      if (updateError) throw updateError;
-      await fetchTopics();
+    try {
+      const updated = await api.updateTopic(id, updates);
+      cache.current = previousCache.map(t => t.id === id ? updated : t);
     } catch (err) {
-      setError(err.message);
+      cache.current = previousCache;
+      setTopics(buildTree(previousCache));
+      showToast('Failed to update topic.', 'error');
       throw err;
     }
   };
 
   const deleteTopic = async (id) => {
-    setError(null);
-    try {
-      const { error: deleteError } = await supabase
-        .from('topics')
-        .delete()
-        .eq('id', id);
+    const previousCache = [...(cache.current || [])];
+    const newCache = previousCache.filter(t => t.id !== id);
+    cache.current = newCache;
+    setTopics(buildTree(newCache));
 
-      if (deleteError) throw deleteError;
-      await fetchTopics();
+    try {
+      await api.deleteTopic(id);
+      showToast('Topic deleted.', 'success');
     } catch (err) {
-      setError(err.message);
+      cache.current = previousCache;
+      setTopics(buildTree(previousCache));
+      showToast('Failed to delete topic.', 'error');
       throw err;
     }
   };
 
-  return { topics, loading, error, fetchTopics, addTopic, editTopic, deleteTopic };
+  return { topics, loading, fetchTopics, addTopic, editTopic, deleteTopic };
 }

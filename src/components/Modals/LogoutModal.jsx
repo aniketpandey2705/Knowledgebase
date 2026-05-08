@@ -24,7 +24,7 @@ export default function LogoutModal({ onConfirm, onClose, loading }) {
           width: '48px', 
           height: '48px', 
           borderRadius: '24px', 
-          backgroundColor: 'var(--background)', 
+          backgroundColor: 'var(--color-bg)', 
           color: 'var(--accent)',
           display: 'flex',
           alignItems: 'center',

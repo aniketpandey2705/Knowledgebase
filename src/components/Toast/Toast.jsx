@@ -26,8 +26,8 @@ function ToastItem({ toast, onDismiss }) {
   
   const typeConfig = {
     success: { color: '#34C759', icon: <CheckCircle size={18} color="#34C759" /> },
-    error: { color: 'var(--danger)', icon: <AlertCircle size={18} color="var(--danger)" /> },
-    info: { color: 'var(--accent)', icon: <Info size={18} color="var(--accent)" /> },
+    error: { color: 'var(--color-danger)', icon: <AlertCircle size={18} color="var(--color-danger)" /> },
+    info: { color: 'var(--color-accent)', icon: <Info size={18} color="var(--color-accent)" /> },
   };
 
   const config = typeConfig[type] || typeConfig.info;
@@ -52,7 +52,7 @@ function ToastItem({ toast, onDismiss }) {
         {config.icon}
       </div>
       
-      <div style={{ flex: 1, color: 'var(--accent)', fontSize: '0.9rem', lineHeight: 1.4, marginTop: '2px' }}>
+      <div style={{ flex: 1, color: 'var(--color-accent)', fontSize: '0.9rem', lineHeight: 1.4, marginTop: '2px' }}>
         {message}
       </div>
       
