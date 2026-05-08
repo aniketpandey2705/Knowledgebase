@@ -1,0 +1,191 @@
+:root {
+  /* Design System Variables */
+  --base: #FFFFFF;
+  --accent: #2C2C2E;
+  --background: #F2F2F7;
+  --text-secondary: #6C6C70;
+  --disabled: #AEAEB2;
+  --border: rgba(0, 0, 0, 0.08);
+  --danger: rgba(255, 59, 48, 1);
+
+  /* Fonts */
+  --font-heading: 'DM Serif Display', serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--accent);
+  font-family: var(--font-body);
+  line-height: 1.5;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  color: var(--accent);
+  font-weight: 400; /* DM Serif Display looks best at normal weight */
+}
+
+code, pre {
+  font-family: var(--font-mono);
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--disabled);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* --- UI COMPONENTS --- */
+
+.raised-card {
+  background-color: var(--base);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 12px;
+}
+
+.recessed-input {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--background);
+  box-shadow: inset 0 1px 4px rgba(0,0,0,0.1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: var(--font-body);
+  color: var(--accent);
+  font-size: 1rem;
+  transition: border-color 150ms ease;
+}
+
+.recessed-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.recessed-input.error {
+  border-color: var(--danger);
+}
+
+.primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 24px;
+  background: linear-gradient(180deg, #3a3a3c 0%, #2c2c2e 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset, 0 2px 8px rgba(0,0,0,0.2);
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 150ms ease-in-out;
+}
+
+.primary-button:active:not(:disabled) {
+  transform: scale(0.98);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset, 0 0px 0px rgba(0,0,0,0.2);
+}
+
+/* Animations */
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes modalEnter {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Skeleton Pulse */
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+.skeleton-pulse {
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+/* Responsive Utilities */
+@media (max-width: 768px) {
+  .mobile-hide { display: none !important; }
+  .mobile-full { width: 100% !important; margin-left: 0 !important; }
+}
+
+
+.primary-button:disabled {
+  background: var(--disabled);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* --- UTILITIES --- */
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+.error-text {
+  color: var(--danger);
+  font-size: 0.85rem;
+  margin-top: 6px;
+}
+
+.auth-link {
+  display: block;
+  text-align: center;
+  margin-top: 24px;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+.auth-link span {
+  color: var(--accent);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
