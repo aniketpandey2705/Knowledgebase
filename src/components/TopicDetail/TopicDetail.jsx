@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, MoreHorizontal, FileText, Image as ImageIcon, HelpCircle, File, Download } from 'lucide-react';
+import { Plus, MoreHorizontal, FileText, Image as ImageIcon, HelpCircle, File, Download, X, ExternalLink } from 'lucide-react';
 import { relativeTime, formattedDate } from '../../utils/timeUtils';
 import { wordCount } from '../../utils/textUtils';
 import { ContentSkeleton } from '../ui/Skeleton';
 import { Button } from '../ui/Button';
-import { X, ExternalLink } from 'lucide-react';
+import { Lightbox } from '../ui/Lightbox';
 
 export default function TopicDetail({ topic, content, loading, onOpenModal, highlightContentId, setHighlightContentId }) {
   const [activeTab, setActiveTab] = useState('question');
@@ -30,18 +30,17 @@ export default function TopicDetail({ topic, content, loading, onOpenModal, high
   React.useEffect(() => {
     if (!highlightContentId) return;
     
-    // Small delay to ensure tab content is rendered
     const timer = setTimeout(() => {
       const el = document.getElementById(`content-${highlightContentId}`);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         el.style.transition = 'box-shadow 300ms ease';
-        el.style.boxShadow = '0 0 0 2px var(--color-accent)';
+        el.style.boxShadow = '0 0 0 2px #2C2C2E';
         
         setTimeout(() => {
           el.style.boxShadow = '';
           setHighlightContentId(null);
-        }, 2000);
+        }, 1500);
       }
     }, 100);
     
@@ -130,26 +129,10 @@ export default function TopicDetail({ topic, content, loading, onOpenModal, high
         </div>
       )}
 
-      {/* Lightbox Overlay */}
-      {lightboxImage && (
-        <div 
-          onClick={() => setLightboxImage(null)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: '90vw', height: '90vh', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px', color: 'white' }}>
-              <span style={{ fontWeight: 600 }}>{lightboxImage.title}</span>
-              <div style={{ display: 'flex', gap: '16px' }}>
-                <a href={lightboxImage.url} download style={{ color: 'white', fontSize: '0.9rem' }}>Download</a>
-                <Button variant="icon" onClick={() => setLightboxImage(null)} style={{ color: 'white', padding: 0 }}><X size={24} /></Button>
-              </div>
-            </div>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-              <img src={lightboxImage.url} alt={lightboxImage.title} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: '8px' }} />
-            </div>
-          </div>
-        </div>
-      )}
+      <Lightbox 
+        image={lightboxImage} 
+        onClose={() => setLightboxImage(null)} 
+      />
 
       <Button 
         onClick={() => onOpenModal('addContent', { topicId: topic.id, defaultType: activeTab })}
@@ -174,81 +157,101 @@ function ContentCard({ item, onEdit, onDelete, isPdfExpanded, onTogglePdf, onOpe
   const date = formattedDate(item.created_at);
   
   return (
-    <div id={`content-${item.id}`} className="raised-card" style={{ padding: '24px', borderLeft: '3px solid var(--color-accent)', display: 'flex', flexDirection: 'column', gap: '12px', transition: 'all 0.2s ease' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <div style={{ color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {item.type === 'question' && <HelpCircle size={18} />}
-          {item.type === 'pdf' && <File size={18} />}
-          {item.type === 'image' && <ImageIcon size={18} />}
-          {item.type === 'note' && <FileText size={18} />}
-          <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>{item.type}</span>
-        </div>
-        <Button variant="icon" onClick={onEdit}>
-          <MoreHorizontal size={18} />
-        </Button>
-      </div>
-
-      <div>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>{item.title}</h3>
-        {item.tags?.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', margin: '4px 0 8px' }}>
-            {item.tags.map((tag, i) => (
-              <span key={i} style={{ backgroundColor: '#F2F2F7', color: '#6C6C70', padding: '2px 6px', borderRadius: '6px', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>#{tag}</span>
-            ))}
+    <div id={`content-${item.id}`} className="raised-card" style={{ padding: '0', overflow: 'hidden', borderLeft: '3px solid var(--color-accent)', display: 'flex', flexDirection: 'column', transition: 'all 0.2s ease' }}>
+      {item.type === 'image' ? (
+        <div style={{ position: 'relative' }}>
+          <img
+            src={item.file_url}
+            alt={item.title}
+            loading="lazy"
+            onClick={onOpenLightbox}
+            style={{
+              width: '100%',
+              height: '200px',
+              objectFit: 'cover',
+              cursor: 'zoom-in',
+              display: 'block'
+            }}
+          />
+          <div style={{ position: 'absolute', top: '12px', right: '12px' }}>
+            <Button variant="icon" onClick={onEdit} style={{ backgroundColor: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(4px)' }}>
+              <MoreHorizontal size={18} />
+            </Button>
           </div>
-        )}
-        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-disabled)' }}>Added {date}</p>
-      </div>
-
-      {(item.type === 'question' || item.type === 'note') && (
-        <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: '1.5' }}>
-          {item.body}
-        </p>
+        </div>
+      ) : (
+        <div style={{ padding: '24px 24px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div style={{ color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {item.type === 'question' && <HelpCircle size={18} />}
+            {item.type === 'pdf' && <FileText size={18} />}
+            {item.type === 'note' && <FileText size={18} />}
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{item.type}</span>
+          </div>
+          <Button variant="icon" onClick={onEdit}>
+            <MoreHorizontal size={18} />
+          </Button>
+        </div>
       )}
 
-      {item.type === 'pdf' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Button variant="outline" onClick={onTogglePdf} style={{ flex: 1, fontSize: '0.85rem' }}>
-              {isPdfExpanded ? 'Close Preview' : 'Preview PDF'}
-            </Button>
-            <a href={item.file_url} download target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', flex: 1 }}>
-              <Button variant="secondary" style={{ width: '100%', fontSize: '0.85rem' }} icon={Download}>Download</Button>
-            </a>
-          </div>
-          
-          {isPdfExpanded && (
-            <div style={{ marginTop: '8px', border: '1px solid var(--color-border)', borderRadius: '8px', overflow: 'hidden' }}>
-              <div style={{ padding: '8px 12px', backgroundColor: 'var(--color-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.file_name}</span>
-                <a href={item.file_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}>
-                  Open full <ExternalLink size={12} />
-                </a>
-              </div>
-              <iframe src={item.file_url} width="100%" height="400px" style={{ border: 'none' }} title={item.title} />
+      <div style={{ padding: item.type === 'image' ? '16px 24px 24px' : '0 24px 24px', flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '4px', lineHeight: '1.3' }}>{item.title}</h3>
+          {item.type === 'pdf' && <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>{item.file_name}</p>}
+          {item.tags?.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+              {item.tags.map((tag, i) => (
+                <span key={i} style={{ backgroundColor: '#F2F2F7', color: '#6C6C70', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>#{tag}</span>
+              ))}
             </div>
           )}
+          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-disabled)' }}>Added {date}</p>
         </div>
-      )}
 
-      {item.type === 'image' && item.file_url && (
-        <div 
-          onClick={onOpenLightbox}
-          style={{ width: '100%', height: '180px', borderRadius: '8px', overflow: 'hidden', backgroundColor: 'var(--color-bg)', cursor: 'zoom-in', border: '1px solid var(--color-border)' }}
-        >
-          <img src={item.file_url} alt={item.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        </div>
-      )}
+        {(item.type === 'question' || item.type === 'note') && (
+          <p style={{ fontSize: '0.95rem', color: 'var(--color-text-secondary)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: '1.6' }}>
+            {item.body}
+          </p>
+        )}
 
-      {(item.type === 'question' || item.type === 'note') && (
-        <div style={{ marginTop: 'auto', borderTop: '1px solid var(--color-border)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#6C6C70' }}>
-          <span>{wordCount(item.body)} words</span>
-          <span>{item.type.charAt(0).toUpperCase() + item.type.slice(1)}</span>
+        {item.type === 'pdf' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px' }}>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Button variant="outline" onClick={onTogglePdf} style={{ flex: 1, fontSize: '0.85rem' }}>
+                {isPdfExpanded ? 'Close Preview' : 'Preview'}
+              </Button>
+              <a href={item.file_url} download target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', flex: 1 }}>
+                <Button variant="secondary" style={{ width: '100%', fontSize: '0.85rem' }} icon={Download}>Download</Button>
+              </a>
+            </div>
+            
+            {isPdfExpanded && (
+              <div style={{ marginTop: '12px', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#F9F9F9' }}>
+                <div style={{ padding: '10px 16px', backgroundColor: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>{item.file_name}</span>
+                  <a href={item.file_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', fontSize: '0.8rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}>
+                    Open in new tab <ExternalLink size={14} />
+                  </a>
+                </div>
+                <iframe src={item.file_url} width="100%" height="500px" style={{ border: 'none' }} title={item.title} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {item.type === 'image' && (
+          <div style={{ marginTop: '4px' }}>
+            <Button variant="outline" onClick={onOpenLightbox} style={{ width: '100%', fontSize: '0.85rem' }}>
+              View Full Size
+            </Button>
+          </div>
+        )}
+
+        <div style={{ marginTop: 'auto', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {(item.type === 'question' || item.type === 'note') ? (
+            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-disabled)' }}>{wordCount(item.body)} words</span>
+          ) : <span></span>}
+          <Button variant="danger" onClick={onDelete} style={{ padding: '4px 8px', fontSize: '0.7rem', opacity: 0.6 }}>Delete</Button>
         </div>
-      )}
-      
-      <div style={{ marginTop: item.type === 'pdf' || item.type === 'image' ? '0' : 'auto', display: 'flex', justifyContent: 'flex-end' }}>
-         <Button variant="danger" onClick={onDelete} style={{ padding: '4px 8px', fontSize: '0.7rem' }}>Delete</Button>
       </div>
     </div>
   );
