@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 const browseCache = new Map();
 
-export function useBrowse(type) {
+export function useBrowse(type, refreshKey) {
   const [content, setContent] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -24,7 +24,7 @@ export function useBrowse(type) {
     try {
       const { data, error: fetchErr } = await supabase
         .from('content')
-        .select('*, topics(name)')
+        .select('*, topics(name, parent_id)')
         .eq('user_id', user.id)
         .eq('type', type)
         .order('created_at', { ascending: false });
@@ -41,8 +41,11 @@ export function useBrowse(type) {
   }, [user, type]);
 
   useEffect(() => {
+    if (refreshKey) {
+      browseCache.delete(type);
+    }
     fetchBrowse();
-  }, [fetchBrowse]);
+  }, [type, refreshKey, fetchBrowse]);
 
   // Clear cache for a specific type or all
   const invalidateCache = (targetType) => {

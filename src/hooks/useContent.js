@@ -1,30 +1,32 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { api } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 
-export function useContent() {
+export function useContent(topicId) {
   const [content, setContent] = useState([]);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const { showToast } = useToast();
 
-  const fetchContent = useCallback(async (topicId = null) => {
+  const fetchContent = useCallback(async (id) => {
+    if (!id) return;
     setLoading(true);
     try {
-      let data;
-      if (topicId) {
-        data = await api.getContentByTopic(topicId);
-      } else {
-        data = await api.getAllContent(user.id);
-      }
+      const data = await api.getContentByTopic(id);
       setContent(data);
     } catch (err) {
       showToast('Failed to load content.', 'error');
     } finally {
       setLoading(false);
     }
-  }, [user, showToast]);
+  }, [showToast]);
+
+  useEffect(() => {
+    setContent([]);
+    if (!topicId) return;
+    fetchContent(topicId);
+  }, [topicId, fetchContent]);
 
   const addContent = async (contentData) => {
     const tempId = Date.now().toString();
@@ -35,7 +37,12 @@ export function useContent() {
 
     try {
       const saved = await api.createContent({ ...contentData, user_id: user.id });
-      setContent(prev => prev.map(item => item.id === tempId ? saved : item));
+      // Only keep in local state if it belongs to current topic
+      if (saved.topic_id === topicId) {
+        setContent(prev => prev.map(item => item.id === tempId ? saved : item));
+      } else {
+        setContent(prev => prev.filter(item => item.id !== tempId));
+      }
       return saved;
     } catch (err) {
       setContent(previous);
@@ -71,5 +78,5 @@ export function useContent() {
     }
   };
 
-  return { content, loading, fetchContent, addContent, editContent, deleteContent };
+  return { content, loading, fetchContent: () => fetchContent(topicId), addContent, editContent, deleteContent };
 }

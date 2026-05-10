@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, FolderOpen, Folder, ChevronRight, LogOut, Settings as SettingsIcon, Menu, X, FileText } from 'lucide-react';
+import { Search, FolderOpen, Folder, ChevronRight, LogOut, Settings as SettingsIcon, Menu, X, FileText, Shuffle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useTopics } from '../hooks/useTopics';
@@ -18,20 +19,33 @@ import LogoutModal from '../components/Modals/LogoutModal';
 import SearchOverlay from '../components/Search/SearchOverlay';
 import { useRecentTopics } from '../hooks/useRecentTopics';
 import PDFSelectorPanel from '../components/PDFSelectorPanel/PDFSelectorPanel';
+import RandomQuizModal from '../components/Modals/RandomQuizModal';
 
 export default function Home() {
   const { user, logout } = useAuth();
   const { topics, flatTopics, loading: topicsLoading, fetchTopics, addTopic, editTopic, deleteTopic } = useTopics();
-  const { content, loading: contentLoading, fetchContent, addContent, editContent, deleteContent } = useContent();
+  
+  // Scoped content for TopicDetail
+  const [selectedTopicId, setSelectedTopicId] = useState(() => {
+    return localStorage.getItem('kb_last_topic') || null;
+  });
+  
+  const { content, loading: contentLoading, addContent, editContent, deleteContent } = useContent(selectedTopicId);
+  const [globalContent, setGlobalContent] = useState([]);
+
+  const fetchGlobalContent = useCallback(async () => {
+    if (!user) return;
+    try {
+      const data = await api.getAllContent(user.id);
+      setGlobalContent(data || []);
+    } catch (err) {}
+  }, [user]);
+
   const { activeModal, modalData, openModal, closeModal } = useModal();
   const { showToast } = useToast();
   const { addRecent, getRecent, clearRecent } = useRecentTopics();
   const navigate = useNavigate();
 
-  // Persistence: Restore last selected topic
-  const [selectedTopicId, setSelectedTopicId] = useState(() => {
-    return localStorage.getItem('kb_last_topic') || null;
-  });
   const [browseType, setBrowseType] = useState(null);
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -42,6 +56,22 @@ export default function Home() {
   const [pdfTitle, setPdfTitle] = useState('Question Paper');
   const [includeAnswers, setIncludeAnswers] = useState(false);
   const [generateBoth, setGenerateBoth] = useState(false);
+  const [browseRefreshKey, setBrowseRefreshKey] = useState(0);
+  const [allQuestions, setAllQuestions] = useState([]);
+
+  const fetchAllQuestions = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('content')
+      .select('*, topics(name)')
+      .eq('user_id', user.id)
+      .eq('type', 'question');
+    setAllQuestions(data || []);
+  }, [user]);
+
+  useEffect(() => {
+    fetchAllQuestions();
+  }, [fetchAllQuestions]);
 
   function removeQuestionFromPDF(id) {
     setSelectedQuestions(prev => prev.filter(q => q.id !== id));
@@ -73,8 +103,8 @@ export default function Home() {
 
   useEffect(() => {
     fetchTopics();
-    fetchContent(); // Fetch all content for sidebar counts
-  }, [fetchTopics, fetchContent]);
+    fetchGlobalContent();
+  }, [fetchTopics, fetchGlobalContent]);
 
   useEffect(() => {
     if (selectedTopicId) {
@@ -91,7 +121,7 @@ export default function Home() {
       setSelectedTopic(null);
       document.title = "Knowledge Base";
     }
-  }, [selectedTopicId, flatTopics, fetchContent, addRecent]);
+  }, [selectedTopicId, flatTopics, addRecent]);
 
   const handleSelectTopic = (id) => {
     setSelectedTopicId(id);
@@ -149,11 +179,14 @@ export default function Home() {
         await addContent(data);
         showToast('Content added.', 'success');
       }
+      setBrowseRefreshKey(prev => prev + 1);
+      fetchAllQuestions();
+      fetchGlobalContent();
       closeModal();
     } catch (err) {}
   };
 
-  const contentCountMap = content.reduce((acc, item) => {
+  const contentCountMap = globalContent.reduce((acc, item) => {
     acc[item.topic_id] = (acc[item.topic_id] || 0) + 1;
     return acc;
   }, {});
@@ -224,6 +257,7 @@ export default function Home() {
               selectedQuestions={selectedQuestions}
               onOpenModal={openModal}
               flatTopics={flatTopics}
+              refreshKey={browseRefreshKey}
             />
           ) : selectedTopicId ? (
             <TopicDetail 
@@ -273,9 +307,24 @@ export default function Home() {
       {(activeModal === 'addTopic' || activeModal === 'editTopic') && <AddTopicModal topicToEdit={modalData} topics={topics} onSave={handleSaveTopic} onClose={closeModal} loading={topicsLoading} />}
       {(activeModal === 'addContent' || activeModal === 'editContent') && <AddContentModal contentToEdit={activeModal === 'editContent' ? modalData : null} topicId={selectedTopicId || modalData?.topicId} defaultType={modalData?.defaultType} userId={user?.id} onSave={handleSaveContent} onClose={closeModal} />}
       {activeModal === 'deleteTopic' && <DeleteConfirmModal itemName={modalData.name} onConfirm={async () => { await deleteTopic(modalData.id); if (selectedTopicId === modalData.id) setSelectedTopicId(null); closeModal(); }} onClose={closeModal} loading={topicsLoading} />}
-      {activeModal === 'deleteContent' && <DeleteConfirmModal itemName={modalData.title} onConfirm={async () => { await deleteContent(modalData.id, modalData.file_url); closeModal(); }} onClose={closeModal} loading={contentLoading} />}
+      {activeModal === 'deleteContent' && <DeleteConfirmModal itemName={modalData.title} onConfirm={async () => { await deleteContent(modalData.id, modalData.file_url); setBrowseRefreshKey(prev => prev + 1); fetchAllQuestions(); fetchGlobalContent(); closeModal(); }} onClose={closeModal} loading={contentLoading} />}
       {activeModal === 'logout' && <LogoutModal onConfirm={handleLogout} onClose={closeModal} />}
       {activeModal === 'search' && <SearchOverlay onClose={closeModal} onNavigate={setSelectedTopicId} topicsList={topics} />}
+      
+      {activeModal === 'randomQuiz' && (
+        <RandomQuizModal
+          allQuestions={allQuestions}
+          topics={flatTopics}
+          selectedTopicId={selectedTopicId}
+          onGenerate={(questions, title) => {
+            setSelectedQuestions(questions);
+            setPdfTitle(title || 'Question Paper');
+            closeModal();
+            setPdfPanelOpen(true);
+          }}
+          onClose={closeModal}
+        />
+      )}
 
       <PDFSelectorPanel
         isOpen={pdfPanelOpen}

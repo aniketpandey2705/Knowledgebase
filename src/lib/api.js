@@ -48,11 +48,13 @@ export const api = {
 
   // --- CONTENT ---
   async getContentByTopic(topicId) {
+    const { data: { user } } = await supabase.auth.getUser();
     const { data, error } = await supabase
       .from('content')
       .select('*, topics(name, parent_id)')
+      .eq('user_id', user.id)
       .eq('topic_id', topicId)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: false });
     if (error) throw error;
     return data;
   },
@@ -67,9 +69,10 @@ export const api = {
   },
 
   async createContent(contentData) {
+    const { data: { user } } = await supabase.auth.getUser();
     const { data, error } = await supabase
       .from('content')
-      .insert(contentData)
+      .insert({ ...contentData, user_id: user.id })
       .select()
       .single();
     if (error) throw error;

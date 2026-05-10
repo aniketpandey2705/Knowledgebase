@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Folder, ChevronRight, Plus, File, Image as ImageIcon, HelpCircle, FileText, LogOut, User, Menu, MoreVertical } from 'lucide-react';
+import { Folder, ChevronRight, Plus, File, Image as ImageIcon, HelpCircle, FileText, LogOut, User, Menu, MoreVertical, Shuffle } from 'lucide-react';
 import { formattedDate } from '../../utils/timeUtils';
 import { SidebarSkeleton } from '../ui/Skeleton';
 import { Button } from '../ui/Button';
@@ -66,6 +66,19 @@ export default function Sidebar({
             <BrowseRow icon={<ImageIcon size={16} />} label="All Images" active={browseType === 'image'} onClick={() => onSelectBrowse('image')} />
             <BrowseRow icon={<HelpCircle size={16} />} label="All Questions" active={browseType === 'question'} onClick={() => onSelectBrowse('question')} />
             <BrowseRow icon={<FileText size={16} />} label="All Notes" active={browseType === 'note'} onClick={() => onSelectBrowse('note')} />
+          </div>
+          
+          <div 
+            onClick={() => onOpenModal('randomQuiz')} 
+            className="btn-active-effect browse-row"
+            style={{
+              height: '44px', display: 'flex', alignItems: 'center', gap: '12px',
+              padding: '0 12px', cursor: 'pointer', borderRadius: '8px',
+              backgroundColor: 'transparent', color: 'var(--color-accent)', 
+              fontSize: '0.9rem', marginTop: '4px'
+            }}
+          >
+            <Shuffle size={16} /> <span>Random Quiz</span>
           </div>
         </div>
 
