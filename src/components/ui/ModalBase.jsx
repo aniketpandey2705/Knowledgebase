@@ -38,6 +38,7 @@ export default function ModalBase({
   return (
     <div 
       onClick={handleBackdropClick}
+      className="modal-overlay"
       style={{
         position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.3)',
         backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center',
@@ -46,15 +47,15 @@ export default function ModalBase({
     >
       <div 
         ref={modalRef}
-        className="raised-card"
+        className="raised-card modal-content"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
         style={{
-          width: '100%', maxWidth, padding: '32px', position: 'relative',
-          animation: 'modalEnter 0.2s ease-out forwards'
+          width: '100%', maxWidth, padding: '32px', position: 'relative'
         }}
       >
+        <div className="modal-drag-handle" />
         <Button 
           variant="icon"
           onClick={onClose}

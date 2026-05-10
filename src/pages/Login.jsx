@@ -42,7 +42,7 @@ export default function Login() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', backgroundColor: 'var(--color-bg)' }}>
-      <div className="raised-card" style={{ width: '100%', maxWidth: '400px', padding: '40px 32px' }}>
+      <div className="raised-card auth-card" style={{ width: '100%', maxWidth: '400px', padding: '40px 32px' }}>
         <h1 style={{ textAlign: 'center', fontSize: '2rem', marginBottom: '32px', fontFamily: 'var(--font-heading)' }}>KnowledgeBase</h1>
         <form onSubmit={handleLogin}>
           <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" />

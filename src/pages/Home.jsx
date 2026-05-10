@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, FolderOpen, Folder, ChevronRight, LogOut, Settings as SettingsIcon } from 'lucide-react';
+import { Search, FolderOpen, Folder, ChevronRight, LogOut, Settings as SettingsIcon, Menu, X } from 'lucide-react';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useTopics } from '../hooks/useTopics';
@@ -35,6 +35,7 @@ export default function Home() {
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [highlightContentId, setHighlightContentId] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     fetchTopics();
@@ -61,11 +62,13 @@ export default function Home() {
   const handleSelectTopic = (id) => {
     setSelectedTopicId(id);
     setBrowseType(null);
+    setSidebarOpen(false);
   };
 
   const handleSelectBrowse = (type) => {
     setBrowseType(type);
     setSelectedTopicId(null);
+    setSidebarOpen(false);
   };
 
   const handleLogout = async () => {
@@ -80,6 +83,9 @@ export default function Home() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         openModal('search');
+      }
+      if (e.key === 'Escape') {
+        setSidebarOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -128,18 +134,30 @@ export default function Home() {
         onOpenModal={openModal} user={user} onLogout={() => openModal('logout')}
         browseType={browseType} onSelectBrowse={handleSelectBrowse}
         contentCountMap={contentCountMap}
+        isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)}
       />
 
       <main className="mobile-full" style={{ marginLeft: '260px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        <header style={{ height: '64px', padding: '0 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'var(--color-base)', borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0, zIndex: 50 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
-            <span>All Topics</span>
-            {selectedTopic && (<><ChevronRight size={14} /><span style={{ color: 'var(--color-accent)', fontWeight: 500 }}>{selectedTopic.name}</span></>)}
+        <header className="app-navbar" style={{ height: '64px', padding: '0 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'var(--color-base)', borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0, zIndex: 50 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button 
+              className="hamburger-btn"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              style={{ display: 'none', background: 'none', border: 'none', padding: '8px', cursor: 'pointer', color: 'var(--color-accent)' }}
+            >
+              {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+            <span className="mobile-app-name" style={{ display: 'none', fontFamily: 'var(--font-heading)', fontSize: '18px', fontWeight: 600, color: 'var(--color-accent)' }}>KnowledgeBase</span>
+            
+            <div className="mobile-hide" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
+              <span>All Topics</span>
+              {selectedTopic && (<><ChevronRight size={14} /><span style={{ color: 'var(--color-accent)', fontWeight: 500 }}>{selectedTopic.name}</span></>)}
+            </div>
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <button onClick={() => openModal('search')} className="btn-active-effect" style={{ height: '40px', padding: '0 12px 0 16px', borderRadius: '20px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
-              <Search size={18} /> <span className="mobile-hide">Search...</span> <kbd style={{ fontSize: '0.7rem', backgroundColor: 'var(--color-base)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--color-border)' }}>⌘K</kbd>
+              <Search size={18} /> <span className="mobile-hide">Search...</span> <kbd className="mobile-hide" style={{ fontSize: '0.7rem', backgroundColor: 'var(--color-base)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--color-border)' }}>⌘K</kbd>
             </button>
 
             <div style={{ position: 'relative' }}>

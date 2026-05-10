@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Search as SearchIcon, X, Folder, HelpCircle, File, Image as ImageIcon, FileText, ChevronRight, Clock } from 'lucide-react';
+import { Search as SearchIcon, X, Folder, HelpCircle, File, Image as ImageIcon, FileText, ChevronRight, Clock, ArrowLeft } from 'lucide-react';
 import { useSearch } from '../../hooks/useSearch';
 import { Skeleton } from '../ui/Skeleton';
 
@@ -68,28 +68,33 @@ export default function SearchOverlay({ onClose, onNavigate, topicsList }) {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', zIndex: 2000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '80px 20px' }}>
-      <div className="raised-card" style={{ width: '100%', maxWidth: '640px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'modalEnter 0.15s ease-out forwards' }}>
+    <div className="search-overlay-container" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', zIndex: 2000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '80px 20px' }}>
+      <div className="raised-card search-overlay-content" style={{ width: '100%', maxWidth: '640px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'modalEnter 0.15s ease-out forwards' }}>
         <div style={{ padding: '20px', borderBottom: '1px solid var(--color-border)' }}>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
-            <SearchIcon size={20} color="var(--color-text-secondary)" style={{ position: 'absolute', left: '16px' }} />
-            <input 
-              ref={inputRef} type="text" className="recessed-input" value={query}
-              onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
-              placeholder="Search topics, aliases, content..."
-              style={{ paddingLeft: '48px', height: '52px', fontSize: '1.1rem' }}
-            />
-            <button onClick={onClose} style={{ position: 'absolute', right: '16px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-disabled)' }}><X size={20} /></button>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginBottom: '12px', gap: '8px' }}>
+            <button className="search-back-btn" onClick={onClose} style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', padding: '4px' }}>
+              <ArrowLeft size={24} />
+            </button>
+            <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
+              <SearchIcon size={20} color="var(--color-text-secondary)" className="search-input-icon" style={{ position: 'absolute', left: '16px' }} />
+              <input 
+                ref={inputRef} type="text" className="recessed-input" value={query}
+                onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
+                placeholder="Search topics, aliases, content..."
+                style={{ paddingLeft: '48px', height: '52px', fontSize: '1.1rem' }}
+              />
+              <button className="search-close-btn" onClick={onClose} style={{ position: 'absolute', right: '16px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-disabled)' }}><X size={20} /></button>
+            </div>
           </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+          <div className="search-filter-bar" style={{ display: 'flex', flexWrap: 'nowrap', gap: '8px', alignItems: 'center', overflowX: 'auto', paddingBottom: '4px' }}>
             {filters.tag && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', backgroundColor: 'var(--color-accent)', color: 'white', padding: '4px 10px', borderRadius: '100px', fontSize: '0.8rem' }}>
+              <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '4px', backgroundColor: 'var(--color-accent)', color: 'white', padding: '4px 10px', borderRadius: '100px', fontSize: '0.8rem' }}>
                 #{filters.tag} <X size={14} onClick={() => setFilters({ ...filters, tag: null })} style={{ cursor: 'pointer' }} />
               </span>
             )}
             {!filters.tag && (
-              <div style={{ position: 'relative', flex: 1 }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: '120px' }}>
                 <input 
                   type="text" value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}

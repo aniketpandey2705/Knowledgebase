@@ -65,22 +65,22 @@ export default function TopicDetail({ topic, content, loading, onOpenModal, high
   ];
 
   return (
-    <div style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto' }}>
-      <header style={{ marginBottom: '32px' }}>
+    <div className="topic-detail-container" style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto' }}>
+      <header className="topic-header" style={{ marginBottom: '32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-          <h1 style={{ fontSize: '2.5rem', fontFamily: 'var(--font-heading)' }}>{topic.name}</h1>
-          {topic.icon && <span style={{ fontSize: '2rem' }}>{topic.icon}</span>}
+          <h1 className="topic-title" style={{ fontSize: '2.5rem', fontFamily: 'var(--font-heading)' }}>{topic.name}</h1>
+          {topic.icon && <span className="topic-icon" style={{ fontSize: '2rem' }}>{topic.icon}</span>}
         </div>
         
         {topic.aliases?.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+          <div className="topic-aliases" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
             {topic.aliases.map((alias, i) => (
               <span key={i} className="chip">#{alias}</span>
             ))}
           </div>
         )}
 
-        <div style={{ color: '#6C6C70', fontFamily: 'var(--font-body)', fontSize: '13px', marginBottom: '4px' }}>
+        <div className="topic-stats" style={{ color: '#6C6C70', fontFamily: 'var(--font-body)', fontSize: '13px', marginBottom: '4px' }}>
           {counts.question} Questions  &bull;  {counts.pdf} PDFs  &bull;  {counts.image} Images  &bull;  {counts.note} Notes
         </div>
 
@@ -89,7 +89,7 @@ export default function TopicDetail({ topic, content, loading, onOpenModal, high
         </div>
       </header>
 
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '32px', borderBottom: '1px solid var(--color-border)', paddingBottom: '16px', overflowX: 'auto' }}>
+      <div className="topic-tabs" style={{ display: 'flex', gap: '12px', marginBottom: '32px', borderBottom: '1px solid var(--color-border)', paddingBottom: '16px', overflowX: 'auto' }}>
         {tabs.map(tab => (
           <button
             key={tab.id}
@@ -135,6 +135,7 @@ export default function TopicDetail({ topic, content, loading, onOpenModal, high
       />
 
       <Button 
+        className="floating-add-btn"
         onClick={() => onOpenModal('addContent', { topicId: topic.id, defaultType: activeTab })}
         style={{
           position: 'fixed', bottom: '40px', right: '40px', width: '56px', height: '56px', borderRadius: '28px',
@@ -232,7 +233,7 @@ function ContentCard({ item, onEdit, onDelete, isPdfExpanded, onTogglePdf, onOpe
                     Open in new tab <ExternalLink size={14} />
                   </a>
                 </div>
-                <iframe src={item.file_url} width="100%" height="500px" style={{ border: 'none' }} title={item.title} />
+                <iframe src={item.file_url} className="pdf-preview-iframe" width="100%" height="500px" style={{ border: 'none' }} title={item.title} />
               </div>
             )}
           </div>

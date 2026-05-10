@@ -26,13 +26,13 @@ export default function BrowseView({ type, onNavigateToTopic, onClose }) {
   const uniqueTopics = new Set(content.map(c => c.topic_id)).size;
 
   return (
-    <div style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto' }}>
+    <div className="topic-detail-container" style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto' }}>
       <header style={{ marginBottom: '40px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
           <Button variant="outline" onClick={onClose} style={{ width: '40px', padding: 0 }}><ArrowLeft size={20} /></Button>
           <div style={{ color: 'var(--color-accent)' }}>{icon}</div>
           <div>
-            <h1 style={{ fontSize: '2.5rem', fontFamily: 'var(--font-heading)' }}>{label}</h1>
+            <h1 className="topic-title" style={{ fontSize: '2.5rem', fontFamily: 'var(--font-heading)' }}>{label}</h1>
             <p style={{ color: 'var(--color-text-secondary)' }}>{itemCount} items across {uniqueTopics} topics</p>
           </div>
         </div>

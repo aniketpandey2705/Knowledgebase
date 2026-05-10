@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Lock, Trash2, ArrowLeft } from 'lucide-react';
+import { User, Lock, Trash2, ArrowLeft, Menu, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useModal } from '../contexts/ModalContext';
@@ -25,6 +25,7 @@ export default function Settings() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passLoading, setPassLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     document.title = "Settings — Knowledge Base";
@@ -81,45 +82,54 @@ export default function Settings() {
         onOpenModal={openModal} 
         user={user} 
         onLogout={() => openModal('logout')}
-        onSelectTopic={(id) => navigate('/home')} // Redirect to home with selected topic
-        onSelectBrowse={() => navigate('/home')}
+        onSelectTopic={(id) => { navigate('/home'); setSidebarOpen(false); }}
+        onSelectBrowse={() => { navigate('/home'); setSidebarOpen(false); }}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
-      <main className="mobile-full" style={{ marginLeft: '260px', flex: 1, padding: '40px' }}>
+      <main className="mobile-full settings-main" style={{ marginLeft: '260px', flex: 1, padding: '40px' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <header style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '40px' }}>
-            <Button onClick={() => navigate('/home')} variant="outline" style={{ width: '40px', padding: 0 }}><ArrowLeft size={20} /></Button>
+          <header className="settings-header" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '40px' }}>
+            <button 
+              className="hamburger-btn"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              style={{ display: 'none', background: 'none', border: 'none', padding: '8px', cursor: 'pointer', color: 'var(--color-accent)' }}
+            >
+              {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+            <Button onClick={() => navigate('/home')} variant="outline" className="settings-back-btn" style={{ width: '40px', padding: 0 }}><ArrowLeft size={20} /></Button>
             <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '2.5rem' }}>Settings</h1>
           </header>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-            <section className="raised-card" style={{ padding: '32px' }}>
+            <section className="raised-card settings-card" style={{ padding: '32px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-                <User size={24} color="var(--color-accent)" /> <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Profile</h2>
+                <User size={24} color="var(--color-accent)" /> <h2 className="section-heading" style={{ fontSize: '1.25rem', fontWeight: 600 }}>Profile</h2>
               </div>
               <form onSubmit={handleUpdateProfile}>
                 <Input label="Full Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter your name" />
                 <Input label="Email Address" value={user?.email || ''} readOnly style={{ backgroundColor: '#f9f9f9', cursor: 'not-allowed' }} />
-                <Button type="submit" loading={profileLoading} style={{ width: 'auto' }}>Save Changes</Button>
+                <Button type="submit" loading={profileLoading} className="settings-save-btn" style={{ width: 'auto' }}>Save Changes</Button>
               </form>
             </section>
 
-            <section className="raised-card" style={{ padding: '32px' }}>
+            <section className="raised-card settings-card" style={{ padding: '32px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-                <Lock size={24} color="var(--color-accent)" /> <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Security</h2>
+                <Lock size={24} color="var(--color-accent)" /> <h2 className="section-heading" style={{ fontSize: '1.25rem', fontWeight: 600 }}>Security</h2>
               </div>
               <form onSubmit={handleUpdatePassword}>
                 <Input label="New Password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min 8 characters" />
                 <Input label="Confirm Password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
-                <Button type="submit" loading={passLoading} style={{ width: 'auto' }}>Update Password</Button>
+                <Button type="submit" loading={passLoading} className="settings-save-btn" style={{ width: 'auto' }}>Update Password</Button>
               </form>
             </section>
 
-            <section className="raised-card" style={{ padding: '32px', borderLeft: '4px solid var(--color-danger)' }}>
+            <section className="raised-card settings-card" style={{ padding: '32px', borderLeft: '4px solid var(--color-danger)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <Trash2 size={24} color="var(--color-danger)" /> <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--color-danger)' }}>Danger Zone</h2>
+                <Trash2 size={24} color="var(--color-danger)" /> <h2 className="section-heading" style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--color-danger)' }}>Danger Zone</h2>
               </div>
               <p style={{ color: 'var(--color-text-secondary)', marginBottom: '24px' }}>Permanently delete your account and all data.</p>
-              <Button onClick={() => openModal('deleteAccount')} variant="danger" style={{ width: 'auto' }}>Delete Account</Button>
+              <Button onClick={() => openModal('deleteAccount')} variant="danger" className="settings-save-btn" style={{ width: 'auto' }}>Delete Account</Button>
             </section>
           </div>
         </div>

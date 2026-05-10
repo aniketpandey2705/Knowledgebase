@@ -14,9 +14,10 @@ export default function Sidebar({
   onLogout,
   browseType,
   onSelectBrowse,
-  contentCountMap = {}
+  contentCountMap = {},
+  isOpen,
+  onClose
 }) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Persistence: Restore expanded state from localStorage
   const [expandedIds, setExpandedIds] = useState(() => {
@@ -34,27 +35,15 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Mobile Hamburger */}
-      <Button 
-        variant="icon"
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        style={{
-          position: 'fixed', top: '12px', left: '12px', zIndex: 1001,
-          display: 'none', // Overridden by media query in index.css
-          background: 'var(--color-base)', border: '1px solid var(--color-border)'
-        }}
-      >
-        <Menu size={24} />
-      </Button>
 
       <aside 
-        className={`${isMobileMenuOpen ? 'mobile-show' : 'mobile-hide'}`}
         style={{
           width: '260px', height: '100vh', position: 'fixed', left: 0, top: 0,
           backgroundColor: 'var(--color-base)', borderRight: '1px solid var(--color-border)',
-          display: 'flex', flexDirection: 'column', zIndex: 1000,
-          transition: 'transform 0.3s ease'
+          display: 'flex', flexDirection: 'column', zIndex: 200,
+          transition: 'transform 250ms ease-in-out'
         }}
+        className={`sidebar-container ${isOpen ? 'mobile-show' : ''}`}
       >
         <div style={{ padding: '24px 20px' }}>
           <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.5rem', marginBottom: '20px' }}>
@@ -96,7 +85,7 @@ export default function Sidebar({
                 selectedTopicId={selectedTopicId}
                 expandedIds={expandedIds}
                 onToggleExpand={toggleExpand}
-                onSelectTopic={(id) => { onSelectTopic(id); setIsMobileMenuOpen(false); }}
+                onSelectTopic={(id) => { onSelectTopic(id); onClose(); }}
                 onOpenModal={onOpenModal}
                 contentCountMap={contentCountMap}
               />
@@ -146,10 +135,10 @@ export default function Sidebar({
       `}</style>
 
       {/* Mobile Overlay */}
-      {isMobileMenuOpen && (
+      {isOpen && (
         <div 
-          onClick={() => setIsMobileMenuOpen(false)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 999 }}
+          onClick={onClose}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 199 }}
         />
       )}
     </>
@@ -160,9 +149,9 @@ function BrowseRow({ icon, label, active, onClick }) {
   return (
     <div 
       onClick={onClick}
-      className="btn-active-effect"
+      className="btn-active-effect browse-row"
       style={{
-        height: '36px', display: 'flex', alignItems: 'center', gap: '12px',
+        height: '44px', display: 'flex', alignItems: 'center', gap: '12px',
         padding: '0 12px', cursor: 'pointer', borderRadius: '8px',
         backgroundColor: active ? 'var(--color-accent)' : 'transparent',
         color: active ? 'white' : 'var(--color-accent)', fontSize: '0.9rem'
@@ -185,7 +174,7 @@ function TopicNode({ topic, level, selectedTopicId, expandedIds, onToggleExpand,
         className="sidebar-topic-row btn-active-effect"
         data-tooltip={topic.updated_at ? `Last updated: ${lastUpdatedStr}` : ''}
         style={{
-          height: '36px', display: 'flex', alignItems: 'center', gap: '8px',
+          height: '44px', display: 'flex', alignItems: 'center', gap: '8px',
           padding: `0 12px 0 ${level * 16 + 12}px`, cursor: 'pointer', borderRadius: '8px',
           backgroundColor: isActive ? 'var(--color-accent)' : 'transparent',
           color: isActive ? 'white' : 'var(--color-text-secondary)',
