@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, MoreHorizontal, FileText, Image as ImageIcon, HelpCircle, File, Download, X, ExternalLink } from 'lucide-react';
+import { Plus, MoreHorizontal, FileText, Image as ImageIcon, HelpCircle, File, Download, X, ExternalLink, Check } from 'lucide-react';
 import { relativeTime, formattedDate } from '../../utils/timeUtils';
 import { wordCount } from '../../utils/textUtils';
 import { ContentSkeleton } from '../ui/Skeleton';
 import { Button } from '../ui/Button';
 import { Lightbox } from '../ui/Lightbox';
 
-export default function TopicDetail({ topic, content, loading, onOpenModal, highlightContentId, setHighlightContentId }) {
+export default function TopicDetail({ topic, content, loading, onOpenModal, highlightContentId, setHighlightContentId, addQuestionToPDF, selectedQuestions }) {
   const [activeTab, setActiveTab] = useState('question');
   const [expandedPdfId, setExpandedPdfId] = useState(null);
   const [lightboxImage, setLightboxImage] = useState(null);
@@ -124,6 +124,8 @@ export default function TopicDetail({ topic, content, loading, onOpenModal, high
               isPdfExpanded={expandedPdfId === item.id}
               onTogglePdf={() => setExpandedPdfId(expandedPdfId === item.id ? null : item.id)}
               onOpenLightbox={() => setLightboxImage({ url: item.file_url, title: item.title, file_name: item.file_name })}
+              addQuestionToPDF={addQuestionToPDF}
+              isSelected={!!selectedQuestions.find(q => q.id === item.id)}
             />
           ))}
         </div>
@@ -154,26 +156,25 @@ export default function TopicDetail({ topic, content, loading, onOpenModal, high
   );
 }
 
-function ContentCard({ item, onEdit, onDelete, isPdfExpanded, onTogglePdf, onOpenLightbox }) {
+function ContentCard({ item, onEdit, onDelete, isPdfExpanded, onTogglePdf, onOpenLightbox, addQuestionToPDF, isSelected }) {
+  const [showMenu, setShowMenu] = useState(false);
   const date = formattedDate(item.created_at);
-  
+  const isQuestion = item.type === 'question';
+  const isLegacy = isQuestion && !item.option_a;
+
+  const difficultyStyles = {
+    Easy: { bg: '#E8F5E9', text: '#2E7D32' },
+    Medium: { bg: '#FFF8E1', text: '#F57F17' },
+    Hard: { bg: '#FFEBEE', text: '#C62828' }
+  };
+
+  const diffStyle = item.difficulty ? difficultyStyles[item.difficulty] : null;
+
   return (
-    <div id={`content-${item.id}`} className="raised-card" style={{ padding: '0', overflow: 'hidden', borderLeft: '3px solid var(--color-accent)', display: 'flex', flexDirection: 'column', transition: 'all 0.2s ease' }}>
+    <div id={`content-${item.id}`} className="raised-card" style={{ padding: '0', overflow: 'hidden', borderLeft: `3px solid ${isQuestion ? (diffStyle?.text || 'var(--color-accent)') : 'var(--color-accent)'}`, display: 'flex', flexDirection: 'column', transition: 'all 0.2s ease' }}>
       {item.type === 'image' ? (
         <div style={{ position: 'relative' }}>
-          <img
-            src={item.file_url}
-            alt={item.title}
-            loading="lazy"
-            onClick={onOpenLightbox}
-            style={{
-              width: '100%',
-              height: '200px',
-              objectFit: 'cover',
-              cursor: 'zoom-in',
-              display: 'block'
-            }}
-          />
+          <img src={item.file_url} alt={item.title} loading="lazy" onClick={onOpenLightbox} style={{ width: '100%', height: '200px', objectFit: 'cover', cursor: 'zoom-in', display: 'block' }} />
           <div style={{ position: 'absolute', top: '12px', right: '12px' }}>
             <Button variant="icon" onClick={onEdit} style={{ backgroundColor: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(4px)' }}>
               <MoreHorizontal size={18} />
@@ -181,79 +182,136 @@ function ContentCard({ item, onEdit, onDelete, isPdfExpanded, onTogglePdf, onOpe
           </div>
         </div>
       ) : (
-        <div style={{ padding: '24px 24px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div style={{ color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {item.type === 'question' && <HelpCircle size={18} />}
-            {item.type === 'pdf' && <FileText size={18} />}
-            {item.type === 'note' && <FileText size={18} />}
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{item.type}</span>
+        <div style={{ padding: '20px 24px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {isQuestion && diffStyle && (
+              <span style={{ 
+                backgroundColor: diffStyle.bg, color: diffStyle.text, padding: '2px 8px', borderRadius: '100px', 
+                fontSize: '11px', fontWeight: 600, fontFamily: 'JetBrains Mono, monospace' 
+              }}>{item.difficulty}</span>
+            )}
+            {isLegacy && (
+              <span style={{ 
+                backgroundColor: '#F2F2F7', color: '#AEAEB2', padding: '2px 8px', borderRadius: '4px', 
+                fontSize: '10px', fontWeight: 500, fontFamily: 'JetBrains Mono, monospace' 
+              }}>Legacy</span>
+            )}
+            {!isQuestion && (
+              <div style={{ color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {item.type === 'pdf' && <FileText size={18} />}
+                {item.type === 'note' && <FileText size={18} />}
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>{item.type}</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {item.tags?.map((tag, i) => (
+                <span key={i} style={{ color: 'var(--color-text-disabled)', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>#{tag}</span>
+              ))}
+            </div>
           </div>
-          <Button variant="icon" onClick={onEdit}>
-            <MoreHorizontal size={18} />
-          </Button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-disabled)' }}>{date}</span>
+            <div style={{ position: 'relative' }}>
+              <Button variant="icon" onClick={() => setShowMenu(!showMenu)}>
+                <MoreHorizontal size={18} />
+              </Button>
+              {showMenu && (
+                <><div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
+                <div className="raised-card" style={{ position: 'absolute', top: '100%', right: 0, width: '140px', padding: '6px', zIndex: 11, backgroundColor: 'var(--color-base)' }}>
+                  <button onClick={() => { onEdit(); setShowMenu(false); }} className="menu-item">{isLegacy ? 'Upgrade' : 'Edit'}</button>
+                  <button onClick={() => { onDelete(); setShowMenu(false); }} className="menu-item" style={{ color: 'var(--color-danger)' }}>Delete</button>
+                </div></>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
-      <div style={{ padding: item.type === 'image' ? '16px 24px 24px' : '0 24px 24px', flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <div>
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '4px', lineHeight: '1.3' }}>{item.title}</h3>
-          {item.type === 'pdf' && <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>{item.file_name}</p>}
-          {item.tags?.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
-              {item.tags.map((tag, i) => (
-                <span key={i} style={{ backgroundColor: '#F2F2F7', color: '#6C6C70', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>#{tag}</span>
-              ))}
-            </div>
-          )}
-          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-disabled)' }}>Added {date}</p>
-        </div>
-
-        {(item.type === 'question' || item.type === 'note') && (
-          <p style={{ fontSize: '0.95rem', color: 'var(--color-text-secondary)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: '1.6' }}>
-            {item.body}
-          </p>
+      <div style={{ padding: '0 24px 20px', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {isQuestion ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <p style={{ fontSize: '1.05rem', fontWeight: 600, color: '#1C1C1E', lineHeight: '1.5' }}>
+              Q. {item.body}
+            </p>
+            
+            {!isLegacy && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {['a', 'b', 'c', 'd'].map(key => {
+                  const optLabel = key.toUpperCase();
+                  const optText = item[`option_${key}`];
+                  const isCorrect = item.correct_option === optLabel;
+                  return (
+                    <div key={key} style={{ 
+                      fontSize: '0.95rem', 
+                      color: isCorrect ? '#2E7D32' : '#2C2C2E',
+                      fontWeight: isCorrect ? 600 : 400,
+                      paddingLeft: '4px'
+                    }}>
+                      {isCorrect ? '✓ ' : '  '}{optLabel}. {optText}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 600, marginBottom: '4px', lineHeight: '1.3' }}>{item.title}</h3>
+            {item.type === 'pdf' && <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>{item.file_name}</p>}
+            {(item.type === 'question' || item.type === 'note') && (
+              <p style={{ fontSize: '0.95rem', color: 'var(--color-text-secondary)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: '1.6' }}>
+                {item.body}
+              </p>
+            )}
+          </div>
         )}
 
         {item.type === 'pdf' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <Button variant="outline" onClick={onTogglePdf} style={{ flex: 1, fontSize: '0.85rem' }}>
-                {isPdfExpanded ? 'Close Preview' : 'Preview'}
-              </Button>
+              <Button variant="outline" onClick={onTogglePdf} style={{ flex: 1, fontSize: '0.85rem' }}>{isPdfExpanded ? 'Close Preview' : 'Preview'}</Button>
               <a href={item.file_url} download target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', flex: 1 }}>
                 <Button variant="secondary" style={{ width: '100%', fontSize: '0.85rem' }} icon={Download}>Download</Button>
               </a>
             </div>
-            
             {isPdfExpanded && (
-              <div style={{ marginTop: '12px', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#F9F9F9' }}>
-                <div style={{ padding: '10px 16px', backgroundColor: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>{item.file_name}</span>
-                  <a href={item.file_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)', fontSize: '0.8rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}>
-                    Open in new tab <ExternalLink size={14} />
-                  </a>
-                </div>
-                <iframe src={item.file_url} className="pdf-preview-iframe" width="100%" height="500px" style={{ border: 'none' }} title={item.title} />
+              <div style={{ marginTop: '4px', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '12px', overflow: 'hidden' }}>
+                <iframe src={item.file_url} width="100%" height="400px" style={{ border: 'none' }} title={item.title} />
               </div>
             )}
           </div>
         )}
 
-        {item.type === 'image' && (
-          <div style={{ marginTop: '4px' }}>
-            <Button variant="outline" onClick={onOpenLightbox} style={{ width: '100%', fontSize: '0.85rem' }}>
-              View Full Size
-            </Button>
+        <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: isQuestion ? '1px solid #F2F2F7' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            {isQuestion && !isLegacy && (
+              <span style={{ fontSize: '12px', color: '#6C6C70', fontFamily: 'DM Sans, sans-serif' }}>
+                ✓ Correct: {item.correct_option}
+              </span>
+            )}
+            {!isQuestion && <span style={{ fontSize: '0.75rem', color: 'var(--color-text-disabled)' }}>{wordCount(item.body || '')} words</span>}
           </div>
-        )}
-
-        <div style={{ marginTop: 'auto', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {(item.type === 'question' || item.type === 'note') ? (
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-disabled)' }}>{wordCount(item.body)} words</span>
-          ) : <span></span>}
-          <Button variant="danger" onClick={onDelete} style={{ padding: '4px 8px', fontSize: '0.7rem', opacity: 0.6 }}>Delete</Button>
+          
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {isQuestion && (
+              <button
+                onClick={() => addQuestionToPDF(item)}
+                style={{
+                  padding: '6px 14px', borderRadius: '100px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                  border: isSelected ? 'none' : '1px solid rgba(0,0,0,0.12)',
+                  backgroundColor: isSelected ? '#2C2C2E' : '#FFFFFF',
+                  color: isSelected ? '#FFFFFF' : '#2C2C2E',
+                  display: 'flex', alignItems: 'center', gap: '4px', transition: 'all 0.2s'
+                }}
+              >
+                {isSelected ? <Check size={14} /> : null}
+                {isSelected ? 'Added' : 'Add to PDF'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
+      <style>{`.menu-item { width: 100%; padding: 8px 10px; border: none; background: none; text-align: left; cursor: pointer; border-radius: 4px; font-size: 13px; transition: background 0.2s; } .menu-item:hover { background: #F2F2F7; }`}</style>
     </div>
   );
 }

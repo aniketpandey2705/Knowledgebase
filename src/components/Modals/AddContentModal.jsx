@@ -17,6 +17,13 @@ export default function AddContentModal({ contentToEdit, topicId, defaultType, u
   const [file, setFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [optionA, setOptionA] = useState('');
+  const [optionB, setOptionB] = useState('');
+  const [optionC, setOptionC] = useState('');
+  const [optionD, setOptionD] = useState('');
+  const [correctOption, setCorrectOption] = useState('');
+  const [difficulty, setDifficulty] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState('');
   
   const { uploadFile, progress, loading: uploading, error: uploadError } = useUpload();
@@ -31,6 +38,15 @@ export default function AddContentModal({ contentToEdit, topicId, defaultType, u
       setBody(contentToEdit.body || '');
       setTags(contentToEdit.tags || []);
       if (contentToEdit.file_url) setFilePreview(contentToEdit.file_url);
+
+      if (contentToEdit.type === 'question') {
+        setOptionA(contentToEdit.option_a || '');
+        setOptionB(contentToEdit.option_b || '');
+        setOptionC(contentToEdit.option_c || '');
+        setOptionD(contentToEdit.option_d || '');
+        setCorrectOption(contentToEdit.correct_option || '');
+        setDifficulty(contentToEdit.difficulty || '');
+      }
     }
   }, [contentToEdit]);
 
@@ -63,11 +79,36 @@ export default function AddContentModal({ contentToEdit, topicId, defaultType, u
     }
   };
 
+  const validate = () => {
+    const errors = {};
+    if (type === 'question') {
+      if (!body.trim()) errors.body = 'Question text is required';
+      if (!optionA.trim()) errors.optionA = 'Option A is required';
+      if (!optionB.trim()) errors.optionB = 'Option B is required';
+      if (!optionC.trim()) errors.optionC = 'Option C is required';
+      if (!optionD.trim()) errors.optionD = 'Option D is required';
+      
+      const options = [optionA.trim(), optionB.trim(), optionC.trim(), optionD.trim()].filter(Boolean);
+      if (options.length === 4 && new Set(options).size !== 4) {
+        errors.options = 'Options must not be identical to each other';
+      }
+      
+      if (!correctOption) errors.correctOption = 'Correct answer is required';
+      if (!difficulty) errors.difficulty = 'Difficulty is required';
+    } else {
+      if (!title.trim()) errors.title = 'Title is required';
+      if (title.length > 150) errors.title = 'Title too long (max 150)';
+    }
+    
+    if (body.length > 10000) errors.body = 'Content too long (max 10,000)';
+    
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title.trim()) { setError('Title is required'); return; }
-    if (title.length > 150) { setError('Title too long (max 150)'); return; }
-    if (body.length > 10000) { setError('Content too long (max 10,000)'); return; }
+    if (!validate()) return;
 
     let file_url = contentToEdit?.file_url || null;
     let file_name = contentToEdit?.file_name || null;
@@ -78,18 +119,36 @@ export default function AddContentModal({ contentToEdit, topicId, defaultType, u
         file_url = uploadResult.publicUrl;
         file_name = uploadResult.fileName;
       }
-      onSave({
-        topic_id: topicId, type, title: title.trim(),
+      
+      const payload = {
+        topic_id: topicId, 
+        type, 
+        title: type === 'question' ? body.slice(0, 60) : title.trim(),
         body: (type === 'question' || type === 'note') ? body.trim() : null,
-        file_url, file_name,
+        file_url, 
+        file_name,
         tags
-      });
+      };
+
+      if (type === 'question') {
+        Object.assign(payload, {
+          option_a: optionA.trim(),
+          option_b: optionB.trim(),
+          option_c: optionC.trim(),
+          option_d: optionD.trim(),
+          correct_option: correctOption,
+          difficulty: difficulty
+        });
+      }
+
+      onSave(payload);
     } catch (err) {
       console.error("Upload failed", err);
     }
   };
 
-  const hasUnsavedChanges = title.trim() !== (contentToEdit?.title || '') || body.trim() !== (contentToEdit?.body || '');
+  const hasUnsavedChanges = (type !== 'question' && title.trim() !== (contentToEdit?.title || '')) || body.trim() !== (contentToEdit?.body || '');
+  const isLegacyQuestion = contentToEdit && type === 'question' && !contentToEdit.option_a;
 
   return (
     <ModalBase 
@@ -109,13 +168,84 @@ export default function AddContentModal({ contentToEdit, topicId, defaultType, u
       )}
 
       <form onSubmit={handleSubmit} onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === 'Enter' && handleSubmit(e)}>
-        <Input 
-          ref={titleRef} label="Title" required value={title}
-          onChange={(e) => { setTitle(e.target.value); setError(''); }}
-          error={error} placeholder={`Enter ${type} title`}
-        />
+        {isLegacyQuestion && (
+          <div style={{ backgroundColor: '#F2F2F7', padding: '12px', borderRadius: '8px', marginBottom: '20px', fontSize: '13px', fontFamily: 'DM Sans, sans-serif', color: '#6C6C70' }}>
+            This is a legacy question. Add options to upgrade it.
+          </div>
+        )}
 
-        {(type === 'question' || type === 'note') ? (
+        {type !== 'question' && (
+          <Input 
+            ref={titleRef} label="Title" required value={title}
+            onChange={(e) => { setTitle(e.target.value); setFieldErrors({ ...fieldErrors, title: '' }); }}
+            error={fieldErrors.title} placeholder={`Enter ${type} title`}
+          />
+        )}
+
+        {type === 'question' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <Textarea 
+              label="Question text (required)" value={body} rows={3} maxLength={500} required
+              onChange={(e) => { setBody(e.target.value); setFieldErrors({ ...fieldErrors, body: '' }); }}
+              placeholder="Enter your question here..."
+              error={fieldErrors.body}
+            />
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <Input label="Option A (required)" required value={optionA} placeholder="Option A" onChange={e => { setOptionA(e.target.value); setFieldErrors({ ...fieldErrors, optionA: '' }); }} error={fieldErrors.optionA} />
+              <Input label="Option B (required)" required value={optionB} placeholder="Option B" onChange={e => { setOptionB(e.target.value); setFieldErrors({ ...fieldErrors, optionB: '' }); }} error={fieldErrors.optionB} />
+              <Input label="Option C (required)" required value={optionC} placeholder="Option C" onChange={e => { setOptionC(e.target.value); setFieldErrors({ ...fieldErrors, optionC: '' }); }} error={fieldErrors.optionC} />
+              <Input label="Option D (required)" required value={optionD} placeholder="Option D" onChange={e => { setOptionD(e.target.value); setFieldErrors({ ...fieldErrors, optionD: '' }); }} error={fieldErrors.optionD} />
+            </div>
+            {fieldErrors.options && <p className="error-text" style={{ marginTop: '-12px' }}>{fieldErrors.options}</p>}
+
+            <div>
+              <label className="form-label">Correct Answer</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {['A', 'B', 'C', 'D'].map(opt => (
+                  <button
+                    key={opt} type="button"
+                    onClick={() => { setCorrectOption(opt); setFieldErrors({ ...fieldErrors, correctOption: '' }); }}
+                    style={{
+                      flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', cursor: 'pointer',
+                      backgroundColor: correctOption === opt ? '#2C2C2E' : 'transparent',
+                      color: correctOption === opt ? 'white' : 'var(--text-secondary)',
+                      fontWeight: 600, transition: 'all 0.2s'
+                    }}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+              {fieldErrors.correctOption && <p className="error-text">{fieldErrors.correctOption}</p>}
+            </div>
+
+            <div>
+              <label className="form-label">Difficulty</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {[
+                  { id: 'Easy', bg: '#E8F5E9', text: '#2E7D32' },
+                  { id: 'Medium', bg: '#FFF8E1', text: '#F57F17' },
+                  { id: 'Hard', bg: '#FFEBEE', text: '#C62828' }
+                ].map(diff => (
+                  <button
+                    key={diff.id} type="button"
+                    onClick={() => { setDifficulty(diff.id); setFieldErrors({ ...fieldErrors, difficulty: '' }); }}
+                    style={{
+                      flex: 1, padding: '10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                      backgroundColor: difficulty === diff.id ? diff.bg : 'var(--color-bg)',
+                      color: difficulty === diff.id ? diff.text : 'var(--text-secondary)',
+                      fontWeight: 600, transition: 'all 0.2s', fontSize: '0.85rem'
+                    }}
+                  >
+                    {diff.id}
+                  </button>
+                ))}
+              </div>
+              {fieldErrors.difficulty && <p className="error-text">{fieldErrors.difficulty}</p>}
+            </div>
+          </div>
+        ) : type === 'note' ? (
           <div className="form-group">
             <Textarea 
               label="Body Text" value={body} rows={6} maxLength={10000}

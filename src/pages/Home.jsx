@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, FolderOpen, Folder, ChevronRight, LogOut, Settings as SettingsIcon, Menu, X } from 'lucide-react';
+import { Search, FolderOpen, Folder, ChevronRight, LogOut, Settings as SettingsIcon, Menu, X, FileText } from 'lucide-react';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useTopics } from '../hooks/useTopics';
@@ -17,6 +17,7 @@ import DeleteConfirmModal from '../components/Modals/DeleteConfirmModal';
 import LogoutModal from '../components/Modals/LogoutModal';
 import SearchOverlay from '../components/Search/SearchOverlay';
 import { useRecentTopics } from '../hooks/useRecentTopics';
+import PDFSelectorPanel from '../components/PDFSelectorPanel/PDFSelectorPanel';
 
 export default function Home() {
   const { user, logout } = useAuth();
@@ -36,6 +37,39 @@ export default function Home() {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [highlightContentId, setHighlightContentId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedQuestions, setSelectedQuestions] = useState([]);
+  const [pdfPanelOpen, setPdfPanelOpen] = useState(false);
+  const [pdfTitle, setPdfTitle] = useState('Question Paper');
+  const [includeAnswers, setIncludeAnswers] = useState(false);
+  const [generateBoth, setGenerateBoth] = useState(false);
+
+  function removeQuestionFromPDF(id) {
+    setSelectedQuestions(prev => prev.filter(q => q.id !== id));
+  }
+
+  function moveQuestion(index, direction) {
+    setSelectedQuestions(prev => {
+      const arr = [...prev];
+      const target = direction === 'up' ? index - 1 : index + 1;
+      if (target < 0 || target >= arr.length) return arr;
+      [arr[index], arr[target]] = [arr[target], arr[index]];
+      return arr;
+    });
+  }
+
+  function clearAll() {
+    setSelectedQuestions([]);
+    setPdfPanelOpen(false);
+  }
+
+  function addQuestionToPDF(question) {
+    setSelectedQuestions(prev => {
+      if (prev.find(q => q.id === question.id)) {
+        return prev.filter(q => q.id !== question.id);
+      }
+      return [...prev, question];
+    });
+  }
 
   useEffect(() => {
     fetchTopics();
@@ -186,6 +220,10 @@ export default function Home() {
                 setHighlightContentId(contentId);
                 setBrowseType(null);
               }} 
+              addQuestionToPDF={addQuestionToPDF}
+              selectedQuestions={selectedQuestions}
+              onOpenModal={openModal}
+              flatTopics={flatTopics}
             />
           ) : selectedTopicId ? (
             <TopicDetail 
@@ -195,6 +233,8 @@ export default function Home() {
               onOpenModal={openModal}
               highlightContentId={highlightContentId}
               setHighlightContentId={setHighlightContentId}
+              addQuestionToPDF={addQuestionToPDF}
+              selectedQuestions={selectedQuestions}
             />
           ) : (
             <div style={{ padding: '80px 40px', maxWidth: '800px', margin: '0 auto' }}>
@@ -236,6 +276,39 @@ export default function Home() {
       {activeModal === 'deleteContent' && <DeleteConfirmModal itemName={modalData.title} onConfirm={async () => { await deleteContent(modalData.id, modalData.file_url); closeModal(); }} onClose={closeModal} loading={contentLoading} />}
       {activeModal === 'logout' && <LogoutModal onConfirm={handleLogout} onClose={closeModal} />}
       {activeModal === 'search' && <SearchOverlay onClose={closeModal} onNavigate={setSelectedTopicId} topicsList={topics} />}
+
+      <PDFSelectorPanel
+        isOpen={pdfPanelOpen}
+        onClose={() => setPdfPanelOpen(false)}
+        selectedQuestions={selectedQuestions}
+        onRemoveQuestion={removeQuestionFromPDF}
+        onMoveQuestion={moveQuestion}
+        onClearAll={clearAll}
+        pdfTitle={pdfTitle}
+        setPdfTitle={setPdfTitle}
+        includeAnswers={includeAnswers}
+        setIncludeAnswers={setIncludeAnswers}
+        generateBoth={generateBoth}
+        setGenerateBoth={setGenerateBoth}
+        flatTopics={flatTopics}
+      />
+
+      {selectedQuestions.length > 0 && (
+        <button 
+          onClick={() => setPdfPanelOpen(true)}
+          style={{
+            position: 'fixed', bottom: '88px', right: '24px', zIndex: 60,
+            display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 20px',
+            backgroundColor: '#2C2C2E', color: 'white', border: 'none', borderRadius: '100px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)', cursor: 'pointer', fontWeight: 600,
+            transition: 'transform 0.2s ease'
+          }}
+          className="btn-active-effect"
+        >
+          <FileText size={20} />
+          <span>PDF ({selectedQuestions.length})</span>
+        </button>
+      )}
 
       <style>{`.dropdown-item { width: 100%; padding: 10px 12px; display: flex; alignItems: center; gap: 10px; border: none; background: none; cursor: pointer; borderRadius: 6px; fontSize: 0.9rem; color: var(--color-accent); transition: background 0.2s; } .dropdown-item:hover { background: var(--color-bg); }`}</style>
     </div>
